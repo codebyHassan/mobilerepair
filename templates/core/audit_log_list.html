@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}System Audit Logs & Staff Activity Trail{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><i class="fa-solid fa-user-shield" style="margin-right: 8px; color: var(--primary-color);"></i>Superadmin Audit Logs & Activity Trail</h1>
+        <p class="page-subtitle">Track every record creation, status update, customer addition, invoice, payment, and staff activity in real-time.</p>
+    </div>
+    <div>
+        <span class="badge badge-ready" style="font-size: 0.85rem; padding: 8px 14px;">
+            <i class="fa-solid fa-list-check"></i> Total {{ total_logs }} Audit Entries
+        </span>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header" style="flex-wrap: wrap; gap: 14px;">
+        <h2 class="panel-title"><i class="fa-solid fa-filter" style="margin-right: 6px;"></i>Filter Activity Logs</h2>
+        
+        <form method="get" style="display: flex; gap: 10px; flex-wrap: wrap; width: 100%;">
+            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search record, details, user..." style="flex: 1; min-width: 200px;">
+            
+            <select name="user" class="form-control" style="width: auto;">
+                <option value="">-- All Staff Users --</option>
+                {% for u in users %}
+                <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"i" %}selected{% endif %}>
+                    {{ u.username }} {% if u.is_superuser %}(Superadmin){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+            
+            <select name="action" class="form-control" style="width: auto;">
+                <option value="">-- All Actions --</option>
+                {% for act_val, act_lbl in action_choices %}
+                <option value="{{ act_val }}" {% if selected_action == act_val %}selected{% endif %}>{{ act_lbl }}</option>
+                {% endfor %}
+            </select>
+            
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Filter</button>
+            {% if query or selected_user or selected_action %}
+            <a href="{% url 'audit_log_list' %}" class="btn btn-secondary"><i class="fa-solid fa-xmark"></i> Clear</a>
+            {% endif %}
+        </form>
+    </div>
+    
+    <div class="panel-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>User (Staff)</th>
+                        <th>Action</th>
+                        <th>Module / Entity</th>
+                        <th>Target Record</th>
+                        <th>Log Details</th>
+                        <th>IP Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in page_obj %}
+                    <tr>
+                        <td style="white-space: nowrap; font-size: 0.85rem; color: var(--text-muted);">
+                            <i class="fa-regular fa-clock" style="margin-right: 4px;"></i> {{ log.timestamp|date:"M d, Y, h:i:s A" }}
+                        </td>
+                        <td>
+                            <div style="font-weight: 600; color: var(--text-primary);">
+                                <i class="fa-solid fa-user-circle" style="margin-right: 4px; color: var(--primary-color);"></i>
+                                {{ log.user.username|default:"System" }}
+                            </div>
+                            {% if log.user.is_superuser %}
+                            <span class="badge" style="background-color: #fee2e2; color: #dc2626; font-size: 0.7rem; padding: 2px 6px;">SUPERADMIN</span>
+                            {% else %}
+                            <span class="badge badge-ready" style="font-size: 0.7rem; padding: 2px 6px;">STAFF</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.action == 'CREATE' %}
+                            <span class="badge" style="background-color: #dcfce7; color: #16a34a;"><i class="fa-solid fa-plus"></i> CREATED</span>
+                            {% elif log.action == 'UPDATE' %}
+                            <span class="badge" style="background-color: #dbeafe; color: #2563eb;"><i class="fa-solid fa-pen"></i> UPDATED</span>
+                            {% elif log.action == 'DELETE' %}
+                            <span class="badge" style="background-color: #fee2e2; color: #dc2626;"><i class="fa-solid fa-trash"></i> DELETED</span>
+                            {% elif log.action == 'STATUS_CHANGE' %}
+                            <span class="badge" style="background-color: #ffedd5; color: #ea580c;"><i class="fa-solid fa-rotate"></i> STATUS CHANGE</span>
+                            {% elif log.action == 'PAYMENT' %}
+                            <span class="badge" style="background-color: #f3e8ff; color: #9333ea;"><i class="fa-solid fa-money-bill"></i> PAYMENT</span>
+                            {% else %}
+                            <span class="badge badge-ready">{{ log.get_action_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td><strong style="color: var(--text-secondary);">{{ log.model_name }}</strong></td>
+                        <td style="font-weight: 600; color: var(--primary-color);">{{ log.object_repr|default:"N/A" }}</td>
+                        <td style="font-size: 0.85rem; line-height: 1.4; max-width: 300px;">{{ log.details|default:"N/A" }}</td>
+                        <td style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">{{ log.ip_address|default:"127.0.0.1" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                            No audit logs recorded matching your filters.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination controls -->
+{% if page_obj.has_other_pages %}
+<div style="display: flex; justify-content: center; gap: 8px; margin-top: 20px;">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}&q={{ query }}&user={{ selected_user }}&action={{ selected_action }}" class="btn btn-sm btn-secondary">&laquo; Previous</a>
+    {% endif %}
+    
+    <span style="align-self: center; font-size: 0.9rem; color: var(--text-muted);">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    </span>
+    
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}&q={{ query }}&user={{ selected_user }}&action={{ selected_action }}" class="btn btn-sm btn-secondary">Next &raquo;</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

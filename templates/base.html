@@ -1,0 +1,912 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ shop_settings.shop_name }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>{% block title %}Dashboard{% endblock %} — {{ shop_settings.shop_name }}</title>
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap Icons CDN (Optional additions) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+    <!-- GitHub-style Top Loading Line -->
+    <div id="top-loading-bar"></div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                {% if shop_settings.shop_logo %}
+                <img src="{{ shop_settings.shop_logo.url }}" alt="Logo" style="max-height: 28px; max-width: 28px; border-radius: var(--radius-sm); object-fit: contain;">
+                {% else %}
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+                {% endif %}
+                <span>{{ shop_settings.shop_name }}</span>
+            </div>
+
+            <ul class="sidebar-menu">
+                <li class="menu-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <a href="{% url 'dashboard' %}" title="Dashboard">
+                        <i class="fa-solid fa-gauge"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                {% if request.user.technician_profile or request.user.is_superuser %}
+                <li class="menu-item {% if 'ess' in request.path %}active{% endif %}">
+                    <a href="{% url 'technician_ess_dashboard' %}" title="Technician ESS Portal">
+                        <i class="fa-solid fa-user-gear"></i>
+                        <span>Technician Portal</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% if perms.customers.view_customer or perms.repairs.view_repairjob or user.is_superuser %}
+                <li class="menu-header">Operations</li>
+
+                {% if perms.customers.view_customer or user.is_superuser %}
+                <li class="menu-item {% if 'customers' in request.path %}active{% endif %}">
+                    <a href="{% url 'customer_list' %}" title="Customers">
+                        <i class="fa-solid fa-users"></i>
+                        <span>Customers</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% if perms.repairs.view_repairjob or user.is_superuser or user.technician_profile %}
+                <li class="menu-item {% if 'repairs' in request.path and 'commissions' not in request.path %}active{% endif %}">
+                    <a href="{% url 'repair_list' %}" title="Repair Jobs">
+                        <i class="fa-solid fa-mobile-screen"></i>
+                        <span>Repair Jobs</span>
+                    </a>
+                </li>
+                <li class="menu-item {% if 'commissions' in request.path %}active{% endif %}">
+                    <a href="{% url 'technician_commissions' %}" title="Technician Commissions">
+                        <i class="fa-solid fa-hand-holding-dollar"></i>
+                        <span>Commissions</span>
+                    </a>
+                </li>
+                {% endif %}
+                {% endif %}
+
+                <li class="menu-header">Inventory & Vendors</li>
+
+                <li class="menu-item {% if 'inventory' in request.path and 'suppliers' not in request.path %}active{% endif %}">
+                    <a href="{% url 'part_list' %}" title="Parts Stock">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                        <span>Parts Stock</span>
+                    </a>
+                </li>
+                {% if user.is_superuser or user.is_shop_admin %}
+                <li class="menu-item {% if 'suppliers' in request.path %}active{% endif %}">
+                    <a href="{% url 'supplier_list' %}" title="Suppliers & Udhar">
+                        <i class="fa-solid fa-hand-holding-dollar"></i>
+                        <span>Suppliers & Udhar</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                <li class="menu-header">Finance</li>
+
+                <li class="menu-item {% if 'billing' in request.path and 'payments' not in request.path %}active{% endif %}">
+                    <a href="{% url 'invoice_list' %}" title="Invoices">
+                        <i class="fa-solid fa-file-invoice-dollar"></i>
+                        <span>Invoices</span>
+                    </a>
+                </li>
+
+                {% if user.is_superuser or user.is_shop_admin %}
+                <li class="menu-item {% if 'billing/payments' in request.path %}active{% endif %}">
+                    <a href="{% url 'payment_list' %}" title="Payments">
+                        <i class="fa-solid fa-money-bill-wave"></i>
+                        <span>Payments</span>
+                    </a>
+                </li>
+
+                <li class="menu-item {% if 'expenses' in request.path %}active{% endif %}">
+                    <a href="{% url 'expense_list' %}" title="Expenses">
+                        <i class="fa-solid fa-receipt"></i>
+                        <span>Expenses</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% if user.is_superuser or user.is_shop_admin %}
+                <li class="menu-header">Reports & Analytics</li>
+
+                <li class="menu-item {% if 'reports' in request.path %}active{% endif %}">
+                    <a href="{% url 'reports_home' %}" title="Business Reports">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <span>Business Reports</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% if user.is_superuser or user.is_shop_admin %}
+                <li class="menu-header">Staff & Settings</li>
+
+                <li class="menu-item {% if 'technicians' in request.path %}active{% endif %}">
+                    <a href="{% url 'technician_list' %}" title="Technicians">
+                        <i class="fa-solid fa-user-gear"></i>
+                        <span>Technicians Roster</span>
+                    </a>
+                </li>
+
+                {% if user.is_superuser %}
+                <li class="menu-item">
+                    <a href="/admin/auth/user/" target="_blank" title="Manage Users & Roles in Django Admin">
+                        <i class="fa-solid fa-users-gear text-warning"></i>
+                        <span>Users & Roles (Admin)</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                <li class="menu-item {% if 'settings' in request.path %}active{% endif %}">
+                    <a href="{% url 'settings_view' %}" title="Settings">
+                        <i class="fa-solid fa-gear"></i>
+                        <span>Shop Settings</span>
+                    </a>
+                </li>
+
+                <li class="menu-item {% if 'audit-logs' in request.path %}active{% endif %}">
+                    <a href="{% url 'audit_log_list' %}" title="Audit Logs">
+                        <i class="fa-solid fa-user-shield"></i>
+                        <span>Audit Logs</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+
+            <div class="sidebar-footer">
+                <span>v1.0.0</span>
+                <span>© 2026</span>
+            </div>
+        </aside>
+
+        <!-- Mobile Sidebar Backdrop Overlay -->
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+        <!-- Main Workspace Layout -->
+        <div class="main-layout">
+            <!-- Top Navigation Bar -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="hamburger-btn" id="sidebar-toggle" aria-label="Toggle Sidebar" title="Collapse / Expand Sidebar">
+                        <i class="fa-solid fa-indent"></i>
+                    </button>
+                    <!-- Global Search Bar -->
+                    <div class="search-bar">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="global-search-input" placeholder="Search customer, IMEI, job #..." autocomplete="off">
+                        <!-- Quick results container -->
+                        <div class="search-results-dropdown" id="search-results-dropdown"></div>
+                    </div>
+                </div>
+
+                <div class="topbar-actions">
+                    <!-- Notifications placeholder -->
+                    <div style="position: relative; cursor: pointer;" title="Notifications">
+                        <i class="fa-regular fa-bell" style="font-size: 1.25rem; color: var(--text-secondary);"></i>
+                    </div>
+
+                    <!-- Dark mode toggle -->
+                    <div style="cursor: pointer;" id="theme-toggle" title="Toggle dark/light theme">
+                        <i class="fa-regular fa-moon" style="font-size: 1.2rem; color: var(--text-secondary);"></i>
+                    </div>
+
+                    <!-- User Profile Dropdown Menu -->
+                    <div class="user-profile-wrapper">
+                        <div class="user-profile" id="user-profile-trigger" title="Account Menu">
+                            <div class="user-avatar">
+                                {{ request.user.username|slice:":1"|upper }}
+                            </div>
+                            <div class="user-info">
+                                <div class="user-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+                                <div class="user-role">{% if request.user.is_superuser %}Administrator{% else %}{{ request.user.groups.first.name|default:"Staff" }}{% endif %}</div>
+                            </div>
+                            <i class="fa-solid fa-chevron-down dropdown-arrow" style="font-size: 0.75rem; color: var(--text-secondary);"></i>
+                        </div>
+
+                        <div class="user-dropdown-menu" id="user-dropdown-menu">
+                            <div class="dropdown-header">
+                                <strong style="color: var(--text-primary);">{{ request.user.get_full_name|default:request.user.username }}</strong>
+                                <span style="font-size: 0.75rem; color: var(--text-secondary);">{% if request.user.is_superuser %}Administrator{% elif request.user.technician_profile %}Technician{% else %}{{ request.user.groups.first.name|default:"Staff" }}{% endif %}</span>
+                            </div>
+                            <div style="border-top: 1px solid var(--border-color); margin: 6px 0;"></div>
+                            
+                            <a href="{% url 'user_profile' %}" class="dropdown-item">
+                                <i class="fa-solid fa-user-circle"></i> My Profile
+                            </a>
+
+                            <a href="{% url 'user_profile' %}#security-section" class="dropdown-item">
+                                <i class="fa-solid fa-key text-warning"></i> Change Password
+                            </a>
+
+                            {% if user.is_superuser or user.is_shop_admin %}
+                            <div style="border-top: 1px solid var(--border-color); margin: 6px 0;"></div>
+                            <a href="{% url 'settings_view' %}" class="dropdown-item">
+                                <i class="fa-solid fa-gear"></i> Shop Settings
+                            </a>
+                            <a href="{% url 'audit_log_list' %}" class="dropdown-item">
+                                <i class="fa-solid fa-user-shield"></i> Audit Logs
+                            </a>
+                            {% endif %}
+
+                            <div style="border-top: 1px solid var(--border-color); margin: 6px 0;"></div>
+                            <a href="{% url 'logout' %}" class="dropdown-item dropdown-item-danger">
+                                <i class="fa-solid fa-right-from-bracket"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Toast/Messages Section -->
+            {% if messages %}
+            <div class="no-print" style="padding: 16px 32px 0 32px;">
+                {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">
+                    <i
+                        class="fa-solid {% if message.tags == 'success' %}fa-circle-check{% else %}fa-circle-exclamation{% endif %}"></i>
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Dynamic Content Area -->
+            <main class="content-workspace">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- Global Scripts -->
+    <script>
+        // Sidebar Toggle (Desktop Collapse/Expand & Mobile Drawer)
+        (function () {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+            const toggleIcon = sidebarToggle ? sidebarToggle.querySelector('i') : null;
+
+            // Restore saved collapsed state
+            const isCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+            if (isCollapsed && window.innerWidth > 768) {
+                document.body.classList.add('sidebar-collapsed');
+                if (toggleIcon) toggleIcon.className = 'fa-solid fa-outdent';
+            }
+
+            function toggleMobileSidebar(show) {
+                if (show) {
+                    sidebar.classList.add('show');
+                    if (sidebarBackdrop) sidebarBackdrop.classList.add('show');
+                } else {
+                    sidebar.classList.remove('show');
+                    if (sidebarBackdrop) sidebarBackdrop.classList.remove('show');
+                }
+            }
+
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (window.innerWidth <= 768) {
+                        const isShown = sidebar.classList.contains('show');
+                        toggleMobileSidebar(!isShown);
+                    } else {
+                        document.body.classList.toggle('sidebar-collapsed');
+                        const nowCollapsed = document.body.classList.contains('sidebar-collapsed');
+                        localStorage.setItem('sidebar_collapsed', nowCollapsed ? 'true' : 'false');
+                        if (toggleIcon) {
+                            toggleIcon.className = nowCollapsed ? 'fa-solid fa-outdent' : 'fa-solid fa-indent';
+                        }
+                    }
+                });
+
+                if (sidebarBackdrop) {
+                    sidebarBackdrop.addEventListener('click', () => toggleMobileSidebar(false));
+                }
+
+                document.addEventListener('click', (e) => {
+                    if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('show')) {
+                        if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+                            toggleMobileSidebar(false);
+                        }
+                    }
+                });
+            }
+        })();
+
+        // Theme Toggle (Light/Dark Mode)
+        const themeToggle = document.getElementById('theme-toggle');
+        const currentTheme = localStorage.getItem('theme');
+        if (currentTheme) {
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            updateThemeIcon(currentTheme);
+        }
+
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                let theme = document.documentElement.getAttribute('data-theme');
+                if (theme === 'dark') {
+                    theme = 'light';
+                    document.documentElement.removeAttribute('data-theme');
+                } else {
+                    theme = 'dark';
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+                localStorage.setItem('theme', theme);
+                updateThemeIcon(theme);
+            });
+        }
+
+        function updateThemeIcon(theme) {
+            const icon = themeToggle ? themeToggle.querySelector('i') : null;
+            if (icon) {
+                if (theme === 'dark') {
+                    icon.className = 'fa-regular fa-sun';
+                } else {
+                    icon.className = 'fa-regular fa-moon';
+                }
+            }
+        }
+
+        // Global Instant Search Logic
+        (function () {
+            const globalSearchInput = document.getElementById('global-search-input');
+            const searchDropdown = document.getElementById('search-results-dropdown');
+
+            if (globalSearchInput && searchDropdown) {
+                let debounceTimer;
+                globalSearchInput.addEventListener('input', () => {
+                    clearTimeout(debounceTimer);
+                    const query = globalSearchInput.value.trim();
+
+                    if (query.length < 2) {
+                        searchDropdown.style.display = 'none';
+                        return;
+                    }
+
+                    debounceTimer = setTimeout(() => {
+                        fetch(`{% url 'global_search_api' %}?q=${encodeURIComponent(query)}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                searchDropdown.innerHTML = '';
+                                let hasResults = false;
+
+                                // Process Customers
+                                if (data.customers && data.customers.length > 0) {
+                                    hasResults = true;
+                                    const section = createSearchSection('Customers');
+                                    data.customers.forEach(cust => {
+                                        section.appendChild(createSearchItem(
+                                            cust.name,
+                                            `Phone: ${cust.phone} | Outstanding: ${cust.outstanding}`,
+                                            `/customers/view/${cust.id}/`
+                                        ));
+                                    });
+                                    searchDropdown.appendChild(section);
+                                }
+
+                                // Process Devices
+                                if (data.devices && data.devices.length > 0) {
+                                    hasResults = true;
+                                    const section = createSearchSection('Devices');
+                                    data.devices.forEach(dev => {
+                                        section.appendChild(createSearchItem(
+                                            `${dev.brand} ${dev.model}`,
+                                            `IMEI: ${dev.imei} | Owner: ${dev.customer_name}`,
+                                            `/customers/view/${dev.customer_id}/`
+                                        ));
+                                    });
+                                    searchDropdown.appendChild(section);
+                                }
+
+                                // Process Repair Jobs
+                                if (data.jobs && data.jobs.length > 0) {
+                                    hasResults = true;
+                                    const section = createSearchSection('Repair Jobs');
+                                    data.jobs.forEach(job => {
+                                        section.appendChild(createSearchItem(
+                                            job.job_number,
+                                            `Device: ${job.device} | Status: ${job.status}`,
+                                            `/repairs/view/${job.id}/`
+                                        ));
+                                    });
+                                    searchDropdown.appendChild(section);
+                                }
+
+                                // Process Invoices
+                                if (data.invoices && data.invoices.length > 0) {
+                                    hasResults = true;
+                                    const section = createSearchSection('Invoices');
+                                    data.invoices.forEach(inv => {
+                                        section.appendChild(createSearchItem(
+                                            inv.invoice_number,
+                                            `Job: ${inv.job_number} | Due: ${inv.due_amount}`,
+                                            `/billing/invoice/${inv.id}/`
+                                        ));
+                                    });
+                                    searchDropdown.appendChild(section);
+                                }
+
+                                if (hasResults) {
+                                    searchDropdown.style.display = 'block';
+                                } else {
+                                    searchDropdown.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">No results found</div>';
+                                    searchDropdown.style.display = 'block';
+                                }
+                            })
+                            .catch(err => console.error('Error fetching search results:', err));
+                    }, 300);
+                });
+
+                // Close search dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!globalSearchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+                        searchDropdown.style.display = 'none';
+                    }
+                });
+
+                // Show search dropdown on focus if input has text
+                globalSearchInput.addEventListener('focus', () => {
+                    if (globalSearchInput.value.trim().length >= 2) {
+                        searchDropdown.style.display = 'block';
+                    }
+                });
+            }
+
+            function createSearchSection(title) {
+                const container = document.createElement('div');
+                container.className = 'search-results-section';
+
+                const header = document.createElement('div');
+                header.className = 'search-results-header';
+                header.innerText = title;
+                container.appendChild(header);
+
+                return container;
+            }
+
+            function createSearchItem(title, subtitle, url) {
+                const item = document.createElement('div');
+                item.className = 'search-result-item';
+                item.onclick = () => window.location.href = url;
+
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'search-result-title';
+                titleDiv.innerText = title;
+                item.appendChild(titleDiv);
+
+                const subDiv = document.createElement('div');
+                subDiv.className = 'search-result-subtitle';
+                subDiv.innerText = subtitle;
+                item.appendChild(subDiv);
+
+                return item;
+            }
+        })();
+
+        // Ultra-Smooth NProgress / GitHub Style Trickling Progress Controller
+        (function () {
+            const topBar = document.getElementById('top-loading-bar');
+            if (!topBar) return;
+
+            let currentWidth = 0;
+            let trickleInterval = null;
+
+            function startTopBar() {
+                clearInterval(trickleInterval);
+                topBar.classList.add('active');
+                currentWidth = 20;
+                topBar.style.width = currentWidth + '%';
+
+                trickleInterval = setInterval(() => {
+                    if (currentWidth < 90) {
+                        const increment = (90 - currentWidth) * 0.15 + Math.random() * 3;
+                        currentWidth = Math.min(90, currentWidth + increment);
+                        topBar.style.width = currentWidth + '%';
+                    }
+                }, 250);
+            }
+
+            function completeTopBar() {
+                clearInterval(trickleInterval);
+                currentWidth = 100;
+                topBar.style.width = '100%';
+
+                setTimeout(() => {
+                    topBar.classList.remove('active');
+                    setTimeout(() => {
+                        currentWidth = 0;
+                        topBar.style.width = '0%';
+                    }, 350);
+                }, 300);
+            }
+
+            // Animate on initial load
+            startTopBar();
+            if (document.readyState === 'complete') {
+                completeTopBar();
+            } else {
+                window.addEventListener('load', completeTopBar);
+            }
+
+            // Trigger on link clicks
+            document.addEventListener('click', function (e) {
+                const link = e.target.closest('a');
+                if (link && link.href && !link.target && !link.href.startsWith('#') && !link.href.startsWith('javascript:')) {
+                    startTopBar();
+                }
+            });
+
+            // Trigger on form submissions
+            document.addEventListener('submit', function () {
+                startTopBar();
+            });
+        })();
+
+        // User Profile Dropdown Toggle (Responsive Touch & Click Support)
+        (function () {
+            const trigger = document.getElementById('user-profile-trigger');
+            const menu = document.getElementById('user-dropdown-menu');
+            if (trigger && menu) {
+                function toggleMenu(e) {
+                    e.stopPropagation();
+                    menu.classList.toggle('show');
+                }
+
+                trigger.addEventListener('click', toggleMenu);
+
+                menu.addEventListener('click', function (e) {
+                    // Do not close if clicking inside unless clicking a link
+                    if (e.target.closest('a')) {
+                        menu.classList.remove('show');
+                    } else {
+                        e.stopPropagation();
+                    }
+                });
+
+                document.addEventListener('click', function () {
+                    menu.classList.remove('show');
+                });
+
+                document.addEventListener('touchstart', function (e) {
+                    if (!trigger.contains(e.target) && !menu.contains(e.target)) {
+                        menu.classList.remove('show');
+                    }
+                }, { passive: true });
+            }
+        })();
+
+        // =========================================================================
+        // 30-MINUTE SESSION & JWT INACTIVITY AUTO-LOGOUT WATCHER
+        // =========================================================================
+        {% if user.is_authenticated %}
+        (function () {
+            const TIMEOUT_SECONDS = 1800; // 30 Minutes
+            const WARNING_SECONDS = 1680; // 28 Minutes (2 min warning)
+            let lastActivity = Date.now();
+            let lastPing = Date.now();
+            let warningShown = false;
+
+            // Inactivity Warning Banner Element
+            const warningBanner = document.createElement('div');
+            warningBanner.id = 'session-timeout-warning';
+            warningBanner.style.cssText = `
+                display: none;
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                z-index: 99999;
+                background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+                color: #ffffff;
+                border: 1px solid #f59e0b;
+                box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+                border-radius: 12px;
+                padding: 14px 20px;
+                font-family: var(--font-family, sans-serif);
+                font-size: 0.88rem;
+                max-width: 360px;
+                animation: slideInUp 0.3s ease;
+            `;
+            warningBanner.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color: #f59e0b; font-size: 1.25rem; margin-top: 2px;"></i>
+                    <div>
+                        <strong style="color: #fbbf24; display: block; margin-bottom: 2px;">Session Expiring Soon</strong>
+                        <span style="color: #cbd5e1; font-size: 0.8rem; line-height: 1.3; display: block; margin-bottom: 8px;">
+                            You have been inactive. For your security, you will be automatically signed out in <span id="session-countdown-seconds" style="color: #f59e0b; font-weight: 700;">120</span> seconds.
+                        </span>
+                        <button type="button" id="session-stay-logged-in-btn" style="
+                            background: #2563eb; color: #ffffff; border: none; border-radius: 6px; padding: 4px 12px; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+                        ">Stay Signed In</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(warningBanner);
+
+            function resetActivity() {
+                lastActivity = Date.now();
+                if (warningShown) {
+                    warningShown = false;
+                    warningBanner.style.display = 'none';
+                }
+
+                // Send lightweight ping every 5 minutes during user activity
+                const now = Date.now();
+                if (now - lastPing > 300000) { // 5 minutes
+                    lastPing = now;
+                    fetch('{% url "session_ping_api" %}', {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    }).catch(function (e) { console.debug('Session ping failed:', e); });
+                }
+            }
+
+            // Listen for user interactions
+            ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(function (evt) {
+                window.addEventListener(evt, resetActivity, { passive: true });
+            });
+
+            document.getElementById('session-stay-logged-in-btn').addEventListener('click', function (e) {
+                e.stopPropagation();
+                resetActivity();
+                fetch('{% url "session_ping_api" %}', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+            });
+
+            // Check inactivity timer every 5 seconds
+            setInterval(function () {
+                const idleSeconds = Math.floor((Date.now() - lastActivity) / 1000);
+
+                if (idleSeconds >= TIMEOUT_SECONDS) {
+                    // 30 Minutes Inactivity reached -> Auto Logout!
+                    window.location.href = "{% url 'logout' %}?expired=1";
+                } else if (idleSeconds >= WARNING_SECONDS) {
+                    // Show 2-minute warning
+                    const remaining = TIMEOUT_SECONDS - idleSeconds;
+                    const countdownEl = document.getElementById('session-countdown-seconds');
+                    if (countdownEl) countdownEl.innerText = remaining;
+                    if (!warningShown) {
+                        warningShown = true;
+                        warningBanner.style.display = 'block';
+                    }
+                } else if (warningShown) {
+                    warningShown = false;
+                    warningBanner.style.display = 'none';
+                }
+            }, 5000);
+        })();
+        {% endif %}
+    </script>
+
+    <!-- MOBILE BOTTOM NAVIGATION DOCK (Role-Based & Permission-Aware) -->
+    <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+        {% if request.user.technician_profile and not request.user.is_superuser and not request.user.is_shop_admin %}
+            <!-- 1. TECHNICIAN ROLE MOBILE BOTTOM DOCK -->
+            <a href="{% url 'technician_ess_dashboard' %}" class="mobile-nav-item {% if 'technician-dashboard' in request.path or request.resolver_match.url_name == 'technician_ess_dashboard' %}active{% endif %}" title="My Desk / Portal">
+                <div class="nav-icon-box">
+                    <i class="fa-solid fa-screwdriver-wrench"></i>
+                </div>
+                <span>My Desk</span>
+            </a>
+
+            <a href="{% url 'repair_list' %}" class="mobile-nav-item {% if 'repairs' in request.path and 'technician-dashboard' not in request.path and 'commissions' not in request.path and 'intake' not in request.path %}active{% endif %}" title="Assigned Repairs">
+                <div class="nav-icon-box">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                </div>
+                <span>Jobs</span>
+            </a>
+
+            <!-- Center Floating Action Button (Quick Intake) -->
+            <a href="{% url 'repair_intake' %}" class="mobile-fab-center" title="Quick Repair Intake">
+                <div class="fab-circle">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+                <span>Intake</span>
+            </a>
+
+            <a href="{% url 'technician_commissions' %}" class="mobile-nav-item {% if 'commissions' in request.path %}active{% endif %}" title="My Earnings & Commissions">
+                <div class="nav-icon-box">
+                    <i class="fa-solid fa-hand-holding-dollar"></i>
+                </div>
+                <span>Earnings</span>
+            </a>
+
+            <button type="button" class="mobile-nav-item" id="mobile-more-btn" onclick="toggleMobileMoreSheet()" title="Technician Tools">
+                <div class="nav-icon-box">
+                    <i class="fa-solid fa-grip"></i>
+                </div>
+                <span>Menu</span>
+            </button>
+
+        {% else %}
+            <!-- 2. ADMIN / SHOP MANAGER / STAFF ROLE MOBILE BOTTOM DOCK -->
+            <a href="{% url 'dashboard' %}" class="mobile-nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" title="Dashboard">
+                <div class="nav-icon-box">
+                    <i class="fa-solid fa-house"></i>
+                </div>
+                <span>Home</span>
+            </a>
+
+            <a href="{% url 'repair_list' %}" class="mobile-nav-item {% if 'repairs' in request.path and 'intake' not in request.path and 'commissions' not in request.path %}active{% endif %}" title="Repairs">
+                <div class="nav-icon-box">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                </div>
+                <span>Repairs</span>
+            </a>
+
+            <!-- Center Floating Action Button (Quick Intake Wizard) -->
+            <a href="{% url 'repair_intake' %}" class="mobile-fab-center" title="Quick Repair Intake">
+                <div class="fab-circle">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+                <span>Intake</span>
+            </a>
+
+            <a href="{% url 'part_list' %}" class="mobile-nav-item {% if 'inventory' in request.path and 'suppliers' not in request.path %}active{% endif %}" title="Stock / Inventory">
+                <div class="nav-icon-box">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                </div>
+                <span>Stock</span>
+            </a>
+
+            <button type="button" class="mobile-nav-item" id="mobile-more-btn" onclick="toggleMobileMoreSheet()" title="More Apps & Tools">
+                <div class="nav-icon-box">
+                    <i class="fa-solid fa-grip"></i>
+                </div>
+                <span>Menu</span>
+            </button>
+        {% endif %}
+    </nav>
+
+    <!-- MOBILE MORE APPS & TOOLS BOTTOM SHEET DRAWER (Strict Role-Filtered) -->
+    <div class="mobile-sheet-backdrop" id="mobile-sheet-backdrop" onclick="toggleMobileMoreSheet()"></div>
+    <div class="mobile-more-sheet" id="mobile-more-sheet">
+        <div class="sheet-handle-bar"></div>
+        <div class="sheet-header">
+            <div class="d-flex align-items-center gap-2">
+                <div class="sheet-header-icon">
+                    {% if request.user.technician_profile and not request.user.is_superuser and not request.user.is_shop_admin %}
+                        <i class="fa-solid fa-user-gear"></i>
+                    {% else %}
+                        <i class="fa-solid fa-shapes"></i>
+                    {% endif %}
+                </div>
+                <div>
+                    <strong style="font-size: 1rem; color: var(--text-primary); display: block;">
+                        {% if request.user.technician_profile and not request.user.is_superuser and not request.user.is_shop_admin %}
+                            Technician Workspace
+                        {% else %}
+                            Shop Modules & Tools
+                        {% endif %}
+                    </strong>
+                    <span style="font-size: 0.75rem; color: var(--text-secondary);">
+                        {% if request.user.technician_profile and not request.user.is_superuser and not request.user.is_shop_admin %}
+                            Quick actions & permitted tools
+                        {% else %}
+                            Quick navigation & shortcuts
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <button type="button" class="btn-close-sheet" onclick="toggleMobileMoreSheet()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="sheet-grid">
+            {% if request.user.technician_profile and not request.user.is_superuser and not request.user.is_shop_admin %}
+                <!-- TECHNICIAN PERMITTED ITEMS ONLY -->
+                <a href="{% url 'technician_ess_dashboard' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #fae8ff; color: #86198f;"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+                    <span>My Desk</span>
+                </a>
+                <a href="{% url 'technician_commissions' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #f3e8ff; color: #7e22ce;"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                    <span>Earnings</span>
+                </a>
+                <a href="{% url 'part_list' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #e0f2fe; color: #0284c7;"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    <span>Parts Stock</span>
+                </a>
+                {% if perms.customers.view_customer %}
+                <a href="{% url 'customer_list' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #e0e7ff; color: #4338ca;"><i class="fa-solid fa-users"></i></div>
+                    <span>Customers</span>
+                </a>
+                {% endif %}
+                <a href="{% url 'user_profile' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #ecfdf5; color: #059669;"><i class="fa-solid fa-circle-user"></i></div>
+                    <span>My Profile</span>
+                </a>
+                <a href="{% url 'logout' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #fee2e2; color: #dc2626;"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
+                    <span>Sign Out</span>
+                </a>
+
+            {% else %}
+                <!-- ADMIN / SHOP MANAGER / FULL PERMISSION ITEMS -->
+                {% if perms.customers.view_customer or user.is_superuser %}
+                <a href="{% url 'customer_list' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #e0e7ff; color: #4338ca;"><i class="fa-solid fa-users"></i></div>
+                    <span>Customers</span>
+                </a>
+                {% endif %}
+
+                {% if perms.billing.view_invoice or user.is_superuser or user.is_shop_admin %}
+                <a href="{% url 'invoice_list' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #dcfce7; color: #15803d;"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                    <span>Invoices</span>
+                </a>
+                {% endif %}
+
+                {% if user.is_superuser or user.is_shop_admin %}
+                <a href="{% url 'payment_list' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #fef3c7; color: #b45309;"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                    <span>Cash Flow</span>
+                </a>
+                <a href="{% url 'supplier_list' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #ffedd5; color: #c2410c;"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                    <span>Suppliers Udhar</span>
+                </a>
+                {% endif %}
+
+                <a href="{% url 'technician_commissions' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #f3e8ff; color: #7e22ce;"><i class="fa-solid fa-coins"></i></div>
+                    <span>Commissions</span>
+                </a>
+
+                {% if user.is_superuser or user.is_shop_admin %}
+                <a href="{% url 'reports_home' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #e0f2fe; color: #0369a1;"><i class="fa-solid fa-chart-pie"></i></div>
+                    <span>Reports</span>
+                </a>
+                <a href="{% url 'technician_list' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #fae8ff; color: #86198f;"><i class="fa-solid fa-user-gear"></i></div>
+                    <span>Tech Roster</span>
+                </a>
+                <a href="{% url 'settings_view' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #f1f5f9; color: #334155;"><i class="fa-solid fa-gear"></i></div>
+                    <span>Settings</span>
+                </a>
+                <a href="{% url 'audit_log_list' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #fef2f2; color: #e11d48;"><i class="fa-solid fa-shield-halved"></i></div>
+                    <span>Audit Logs</span>
+                </a>
+                {% endif %}
+
+                <a href="{% url 'user_profile' %}" class="sheet-app-card">
+                    <div class="sheet-app-icon" style="background: #ecfdf5; color: #059669;"><i class="fa-solid fa-circle-user"></i></div>
+                    <span>My Profile</span>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+    function toggleMobileMoreSheet() {
+        const sheet = document.getElementById('mobile-more-sheet');
+        const backdrop = document.getElementById('mobile-sheet-backdrop');
+        if (sheet && backdrop) {
+            sheet.classList.toggle('active');
+            backdrop.classList.toggle('active');
+        }
+    }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

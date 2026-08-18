@@ -1,0 +1,526 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice {{ invoice.invoice_number }} — Print</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8fafc;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        /* Mode Switcher Toolbar */
+        .toolbar {
+            max-width: 800px;
+            margin: 0 auto 20px auto;
+            background-color: #ffffff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-format {
+            padding: 8px 14px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #475569;
+        }
+
+        .btn-format.active {
+            background-color: #4f46e5;
+            color: #ffffff;
+            border-color: #4f46e5;
+        }
+
+        .btn-print {
+            background-color: #16a34a;
+            color: #ffffff;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        /* Default A4 Layout */
+        .invoice-container {
+            background: #ffffff;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
+            margin-bottom: 24px;
+        }
+
+        .shop-info h1 {
+            margin: 0 0 6px 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .shop-info p {
+            margin: 0 0 4px 0;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .invoice-title {
+            text-align: right;
+        }
+
+        .invoice-title h2 {
+            margin: 0 0 4px 0;
+            font-size: 22px;
+            color: #4f46e5;
+            font-weight: 700;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 24px;
+        }
+
+        .metadata-section h3 {
+            margin: 0 0 8px 0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 4px;
+        }
+
+        .metadata-section p {
+            margin: 0 0 4px 0;
+            font-size: 13px;
+        }
+
+        table.invoice-items {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+        }
+
+        table.invoice-items th {
+            background-color: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+            padding: 10px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #475569;
+        }
+
+        table.invoice-items td {
+            border-bottom: 1px solid #f1f5f9;
+            padding: 10px;
+        }
+
+        .totals-section {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 30px;
+        }
+
+        .totals-table {
+            width: 280px;
+            border-collapse: collapse;
+        }
+
+        .totals-table td {
+            padding: 6px 10px;
+        }
+
+        .totals-table tr.total-row {
+            font-weight: 700;
+            font-size: 15px;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .footer-notes {
+            text-align: center;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 16px;
+            margin-top: 30px;
+            color: #64748b;
+            font-size: 11px;
+        }
+
+        /* ------------------------------------------------------------- */
+        /* 3-INCH (80MM) THERMAL POS RECEIPT SLIP STYLES */
+        /* ------------------------------------------------------------- */
+        body.thermal-mode {
+            background-color: #ffffff;
+            padding: 0;
+        }
+
+        body.thermal-mode .invoice-container {
+            max-width: 76mm;
+            padding: 8px 4px;
+            box-shadow: none;
+            border-radius: 0;
+            font-family: 'Courier New', Courier, monospace, sans-serif;
+            font-size: 11px;
+            color: #000000;
+            margin: 0 auto;
+        }
+
+        body.thermal-mode .header {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+        body.thermal-mode .invoice-title {
+            text-align: center;
+            margin-top: 6px;
+        }
+
+        body.thermal-mode .invoice-title h2 {
+            font-size: 16px;
+            color: #000;
+            margin-bottom: 2px;
+        }
+
+        body.thermal-mode .shop-info h1 {
+            font-size: 16px;
+            color: #000;
+        }
+
+        body.thermal-mode .shop-info p {
+            color: #000;
+            font-size: 10px;
+        }
+
+        body.thermal-mode .metadata-grid {
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 8px;
+        }
+
+        body.thermal-mode .metadata-section h3 {
+            color: #000;
+            font-size: 10px;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        body.thermal-mode table.invoice-items {
+            margin-bottom: 10px;
+        }
+
+        body.thermal-mode table.invoice-items th {
+            background: none;
+            border-bottom: 1px dashed #000;
+            color: #000;
+            font-size: 10px;
+            padding: 4px 2px;
+        }
+
+        body.thermal-mode table.invoice-items td {
+            border-bottom: 1px dotted #ccc;
+            padding: 4px 2px;
+            font-size: 10px;
+        }
+
+        body.thermal-mode .totals-section {
+            justify-content: stretch;
+            margin-bottom: 10px;
+            border-top: 1px dashed #000;
+            padding-top: 6px;
+        }
+
+        body.thermal-mode .totals-table {
+            width: 100%;
+        }
+
+        body.thermal-mode .totals-table td {
+            padding: 3px 2px;
+            font-size: 10px;
+        }
+
+        body.thermal-mode .footer-notes {
+            border-top: 1px dashed #000;
+            padding-top: 8px;
+            margin-top: 10px;
+            color: #000;
+            font-size: 9px;
+        }
+
+        /* Mobile Screen Responsiveness */
+        @media screen and (max-width: 600px) {
+            body {
+                padding: 10px !important;
+            }
+
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn-group {
+                width: 100%;
+            }
+
+            .btn-format {
+                flex: 1;
+                justify-content: center;
+            }
+
+            .btn-print {
+                width: 100%;
+            }
+
+            .invoice-container {
+                padding: 16px !important;
+                width: 100% !important;
+            }
+
+            .metadata-grid {
+                grid-template-columns: 1fr !important;
+                gap: 16px !important;
+            }
+
+            .header {
+                flex-direction: column !important;
+                gap: 12px;
+            }
+
+            .invoice-title {
+                text-align: left !important;
+            }
+        }
+
+        /* ------------------------------------------------------------- */
+        /* PRINT MEDIA QUERIES */
+        /* ------------------------------------------------------------- */
+        @media print {
+            body {
+                background: none !important;
+                padding: 0 !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .invoice-container {
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+            }
+
+            body.thermal-mode {
+                width: 76mm !important;
+            }
+
+            body.thermal-mode .invoice-container {
+                width: 76mm !important;
+                max-width: 76mm !important;
+                font-size: 10px !important;
+            }
+
+            @page {
+                margin: 5mm;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Print Toolbar Switcher -->
+    <div class="toolbar no-print">
+        <div class="btn-group">
+            <button id="btn-a4" onclick="setPrintMode('a4')" class="btn-format active">
+                📄 A4 Full Page Invoice
+            </button>
+            <button id="btn-thermal" onclick="setPrintMode('thermal')" class="btn-format">
+                🧾 3-Inch (80mm) Thermal Slip
+            </button>
+        </div>
+
+        <button onclick="window.print()" class="btn-print">
+            🖨️ Print Invoice
+        </button>
+    </div>
+
+    <!-- Main Printable Invoice Box -->
+    <div class="invoice-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="shop-info">
+                <h1>{{ settings.shop_name }}</h1>
+                <p>Phone: {{ settings.shop_phone|default:"—" }}</p>
+                <p>{{ settings.shop_address|default:"—" }}</p>
+            </div>
+            <div class="invoice-title">
+                <h2>RECEIPT / INVOICE</h2>
+                <p><strong>Invoice #:</strong> {{ invoice.invoice_number }}</p>
+                <p><strong>Job #:</strong> {{ invoice.repair_job.job_number }}</p>
+                <p><strong>Date:</strong> {{ invoice.created_at|date:"d M Y, h:i A" }}</p>
+            </div>
+        </div>
+
+        <!-- Metadata Grid -->
+        <div class="metadata-grid">
+            <div class="metadata-section">
+                <h3>CUSTOMER</h3>
+                <p><strong>Name:</strong> {{ invoice.repair_job.customer.name }}</p>
+                <p><strong>Phone:</strong> {{ invoice.repair_job.customer.phone }}</p>
+                {% if invoice.repair_job.customer.address %}
+                <p><strong>Address:</strong> {{ invoice.repair_job.customer.address }}</p>
+                {% endif %}
+            </div>
+
+            <div class="metadata-section">
+                <h3>DEVICE SPECIFICATIONS</h3>
+                <p><strong>Model:</strong> {{ invoice.repair_job.device.brand }} {{ invoice.repair_job.device.model }}</p>
+                <p><strong>IMEI / Serial:</strong> {{ invoice.repair_job.device.imei|default:"—" }}</p>
+                <p><strong>Specs:</strong> {{ invoice.repair_job.device.color|default:"N/A" }} / {{ invoice.repair_job.device.storage|default:"N/A" }}</p>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <table class="invoice-items">
+            <thead>
+                <tr>
+                    <th style="width: 50%;">Item / Description</th>
+                    <th style="width: 15%;">Qty</th>
+                    <th style="width: 35%; text-align: right;">Price (Rs.)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rp in parts %}
+                <tr>
+                    <td>{{ rp.part.name }}</td>
+                    <td>{{ rp.quantity }}</td>
+                    <td style="text-align: right;">{% widthratio rp.customer_price 1 rp.quantity as total_part %}{{ total_part|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+
+                {% if labor > 0 %}
+                <tr>
+                    <td>Technician Labor & Service</td>
+                    <td>1</td>
+                    <td style="text-align: right;">{{ labor|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        <!-- Totals Section -->
+        <div class="totals-section">
+            <table class="totals-table">
+                <tr>
+                    <td>Subtotal:</td>
+                    <td style="text-align: right;">Rs. {{ invoice.subtotal|floatformat:2 }}</td>
+                </tr>
+                {% if invoice.discount > 0 %}
+                <tr>
+                    <td style="color: #dc2626;">Discount:</td>
+                    <td style="text-align: right; color: #dc2626;">- Rs. {{ invoice.discount|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                <tr class="total-row">
+                    <td><strong>Total Amount:</strong></td>
+                    <td style="text-align: right;"><strong>Rs. {{ invoice.total|floatformat:2 }}</strong></td>
+                </tr>
+                <tr>
+                    <td style="color: #16a34a;">Amount Paid:</td>
+                    <td style="text-align: right; color: #16a34a; font-weight: 600;">Rs. {{ invoice.paid_amount|floatformat:2 }}</td>
+                </tr>
+                {% if invoice.due_amount > 0 %}
+                <tr style="color: #dc2626; font-weight: 700;">
+                    <td>Remaining Due:</td>
+                    <td style="text-align: right;">Rs. {{ invoice.due_amount|floatformat:2 }}</td>
+                </tr>
+                {% else %}
+                <tr style="color: #16a34a; font-weight: 700;">
+                    <td>Status:</td>
+                    <td style="text-align: right;">PAID IN FULL</td>
+                </tr>
+                {% endif %}
+            </table>
+        </div>
+
+        <!-- Footer terms -->
+        <div class="footer-notes">
+            <p><strong>Terms & Conditions:</strong></p>
+            <p>1. Please verify device functionality before leaving shop counter.</p>
+            <p>2. Warranty applies only to replaced components.</p>
+            <p style="margin-top: 10px; font-weight: 700;">Thank you for choosing {{ settings.shop_name }}!</p>
+        </div>
+    </div>
+
+    <script>
+        function setPrintMode(mode) {
+            const btnA4 = document.getElementById('btn-a4');
+            const btnThermal = document.getElementById('btn-thermal');
+
+            if (mode === 'thermal') {
+                document.body.classList.add('thermal-mode');
+                btnThermal.classList.add('active');
+                btnA4.classList.remove('active');
+                localStorage.setItem('preferred_print_mode', 'thermal');
+            } else {
+                document.body.classList.remove('thermal-mode');
+                btnA4.classList.add('active');
+                btnThermal.classList.remove('active');
+                localStorage.setItem('preferred_print_mode', 'a4');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode') || localStorage.getItem('preferred_print_mode') || 'a4';
+            setPrintMode(mode);
+
+            if (urlParams.get('autoprint') === '1') {
+                setTimeout(() => window.print(), 300);
+            }
+        });
+    </script>
+</body>
+</html>

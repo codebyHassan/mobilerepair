@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+
+{% block title %}Customer Profile — {{ customer.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ customer.name }}</h1>
+        <p class="page-subtitle">Registered on {{ customer.created_at|date:"M d, Y" }}</p>
+    </div>
+    <div style="display: flex; gap: 12px;">
+        <a href="{% url 'customer_edit' customer.id %}" class="btn btn-secondary">
+            <i class="fa-solid fa-user-pen"></i> Edit Profile
+        </a>
+        <a href="{% url 'device_create' customer.id %}" class="btn btn-primary">
+            <i class="fa-solid fa-mobile-screen"></i> Add Device
+        </a>
+    </div>
+</div>
+
+<!-- Stat metrics -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Total Devices</div>
+            <div class="stat-value">{{ devices.count }}</div>
+        </div>
+        <div class="stat-icon">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Repair Jobs</div>
+            <div class="stat-value">{{ repairs.count }}</div>
+        </div>
+        <div class="stat-icon">
+            <i class="fa-solid fa-screwdriver-wrench"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Total Billed</div>
+            <div class="stat-value">Rs. {{ total_spent|floatformat:2 }}</div>
+        </div>
+        <div class="stat-icon" style="background-color: #dcfce7; color: #15803d;">
+            <i class="fa-solid fa-wallet"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card" {% if outstanding > 0 %}style="border-color: #fca5a5;"{% endif %}>
+        <div>
+            <div class="stat-title">Outstanding Due</div>
+            <div class="stat-value" {% if outstanding > 0 %}style="color: #dc2626;"{% endif %}>Rs. {{ outstanding|floatformat:2 }}</div>
+        </div>
+        <div class="stat-icon" style="background-color: #fee2e2; color: #dc2626;">
+            <i class="fa-solid fa-hand-holding-dollar"></i>
+        </div>
+    </div>
+</div>
+
+<div class="details-grid">
+    <!-- Left Column: Devices and Repair history -->
+    <div style="display: flex; flex-direction: column; gap: 28px;">
+        <!-- Devices Owned -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fa-solid fa-mobile-screen" style="margin-right: 8px;"></i>Devices</h2>
+            </div>
+            <div class="panel-body" style="padding: 0;">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th>IMEI / Serial</th>
+                                <th>Color / Storage</th>
+                                <th>Condition</th>
+                                <th style="text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dev in devices %}
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 600;">{{ dev.brand }} {{ dev.model }}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                        Pass: <code style="background-color: #f1f5f9; padding: 2px 4px; border-radius: 4px;">{{ dev.device_password|default:"None" }}</code>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div style="font-size: 0.9rem;">IMEI: {{ dev.imei|default:"—" }}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-muted);">S/N: {{ dev.serial_number|default:"—" }}</div>
+                                </td>
+                                <td>
+                                    <div style="font-size: 0.9rem;">{{ dev.color|default:"—" }}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ dev.storage|default:"—" }}</div>
+                                </td>
+                                <td>
+                                    <div style="font-size: 0.85rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ dev.physical_condition }}">
+                                        {{ dev.physical_condition|default:"None logged" }}
+                                    </div>
+                                </td>
+                                <td style="text-align: right; white-space: nowrap;">
+                                    <a href="{% url 'repair_create' %}?customer_id={{ customer.id }}&device_id={{ dev.id }}" class="btn btn-success btn-sm">
+                                        <i class="fa-solid fa-screwdriver-wrench"></i> Repair Phone
+                                    </a>
+                                    <a href="{% url 'device_edit' dev.id %}" class="btn btn-secondary btn-sm">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                                    No devices registered for this customer.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Repair History -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fa-solid fa-history" style="margin-right: 8px;"></i>Repair History</h2>
+            </div>
+            <div class="panel-body" style="padding: 0;">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Job #</th>
+                                <th>Device</th>
+                                <th>Complaint</th>
+                                <th>Status</th>
+                                <th>Bill</th>
+                                <th>Due</th>
+                                <th>Date</th>
+                                <th style="text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for job in repairs %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'repair_detail' job.id %}" style="font-weight: 600; color: var(--primary-color);">
+                                        {{ job.job_number }}
+                                    </a>
+                                </td>
+                                <td>{{ job.device.brand }} {{ job.device.model }}</td>
+                                <td title="{{ job.complaint }}" style="font-size: 0.85rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    {{ job.complaint }}
+                                </td>
+                                <td>
+                                    <span class="badge badge-{{ job.status|lower }}">
+                                        {{ job.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if job.invoice %}
+                                        Rs. {{ job.invoice.total|floatformat:2 }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if job.invoice and job.invoice.due_amount > 0 %}
+                                        <span style="color: #dc2626; font-weight: 600;">Rs. {{ job.invoice.due_amount|floatformat:2 }}</span>
+                                    {% else %}
+                                        <span style="color: #16a34a;">0.00</span>
+                                    {% endif %}
+                                </td>
+                                <td style="font-size: 0.85rem;">{{ job.received_date|date:"M d, Y" }}</td>
+                                <td style="text-align: right;">
+                                    <a href="{% url 'repair_detail' job.id %}" class="btn btn-secondary btn-sm">
+                                        <i class="fa-solid fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                                    No repair history.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: Profile details info -->
+    <div style="display: flex; flex-direction: column; gap: 28px;">
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fa-solid fa-id-card" style="margin-right: 8px;"></i>Contact Info</h2>
+            </div>
+            <div class="panel-body">
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Phone Number</div>
+                        <div style="font-weight: 500; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-phone" style="color: var(--primary-color); font-size: 0.9rem;"></i>
+                            {{ customer.phone }}
+                        </div>
+                    </div>
+                    
+                    {% if customer.whatsapp %}
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">WhatsApp</div>
+                        <div style="font-weight: 500; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-brands fa-whatsapp" style="color: #25d366; font-size: 1.1rem;"></i>
+                            {{ customer.whatsapp }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if customer.email %}
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Email Address</div>
+                        <div style="font-weight: 500; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-envelope" style="color: var(--text-muted); font-size: 0.9rem;"></i>
+                            {{ customer.email }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Address</div>
+                        <div style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.4;">
+                            {{ customer.address|default:"No address logged" }}
+                        </div>
+                    </div>
+                    
+                    <div style="border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 8px;">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">Internal Remarks</div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); background-color: var(--background-color); padding: 12px; border-radius: var(--radius-sm); font-style: italic;">
+                            {{ customer.notes|default:"No notes registered" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

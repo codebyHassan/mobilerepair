@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Log Stock Transaction — {{ part.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Log Stock Transaction</h1>
+        <p class="page-subtitle">Record manual inventory updates for: <strong>{{ part.name }}</strong></p>
+    </div>
+    <a href="{% url 'part_detail' part.id %}" class="btn btn-secondary">
+        <i class="fa-solid fa-arrow-left-long"></i> Back to Ledger
+    </a>
+</div>
+
+<div class="panel" style="max-width: 600px;">
+    <div class="panel-header">
+        <h2 class="panel-title">Transaction Details</h2>
+    </div>
+    <div class="panel-body">
+        <div style="background-color: var(--background-color); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px; display: flex; justify-content: space-between;">
+            <div>
+                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Current Stock:</span>
+                <div style="font-size: 1.25rem; font-weight: 700; margin-top: 4px;">{{ part.current_stock }} units</div>
+            </div>
+            <div style="text-align: right;">
+                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">SKU Code:</span>
+                <div style="font-size: 1.1rem; font-weight: 600; margin-top: 4px; color: var(--primary-color);">{{ part.sku }}</div>
+            </div>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label class="form-label" for="{{ form.transaction_type.id_for_label }}">Transaction Type *</label>
+                {{ form.transaction_type }}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                    Select <strong>Purchase</strong> if buying more stock. Select <strong>Adjustment</strong> for stocktaking audits.
+                </div>
+                {{ form.transaction_type.errors }}
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="{{ form.quantity.id_for_label }}">Quantity *</label>
+                {{ form.quantity }}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                    Enter a positive integer. (Subtraction is automatically handled based on type).
+                </div>
+                {{ form.quantity.errors }}
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label class="form-label" for="{{ form.note.id_for_label }}">Reason / Remarks *</label>
+                {{ form.note }}
+                {{ form.note.errors }}
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-box-archive"></i> Record Transaction
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

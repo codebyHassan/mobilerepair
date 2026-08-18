@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+
+{% block title %}Repair Jobs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Repair Jobs</h1>
+        <p class="page-subtitle">Track and update active repair operations</p>
+    </div>
+    <a href="{% url 'repair_intake' %}" class="btn btn-primary">
+        <i class="fa-solid fa-square-plus"></i> New Repair Job
+    </a>
+</div>
+
+<!-- Status Filter Badges -->
+<div class="panel" style="margin-bottom: 20px; overflow: visible;">
+    <div class="panel-body" style="padding: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-right: 8px;">Filter Status:</span>
+        <a href="{% url 'repair_list' %}" class="btn {% if not current_status %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">All</a>
+        {% for st_val, st_lbl in statuses %}
+            <a href="{% url 'repair_list' %}?status={{ st_val }}{% if query %}&q={{ query }}{% endif %}" class="btn {% if current_status == st_val %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                {{ st_lbl }}
+            </a>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Active Repair Queue</h2>
+        <form method="get" action="{% url 'repair_list' %}" style="display: flex; gap: 8px;">
+            {% if current_status %}
+                <input type="hidden" name="status" value="{{ current_status }}">
+            {% endif %}
+            <input type="text" name="q" value="{{ query }}" placeholder="Search job #, customer, IMEI..." class="form-control" style="width: 240px; padding: 6px 12px; font-size: 0.9rem;">
+            <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+            {% if query %}
+                <a href="{% url 'repair_list' %}{% if current_status %}?status={{ current_status }}{% endif %}" class="btn btn-danger btn-sm" title="Clear Search">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+            {% endif %}
+        </form>
+    </div>
+    <!-- DESKTOP DATA TABLE (Visible on tablets & desktop) -->
+    <div class="panel-body desktop-view-only" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Job Number</th>
+                        <th>Customer</th>
+                        <th>Device</th>
+                        <th>Problem / Complaint</th>
+                        <th>Assigned Tech</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Total Bill</th>
+                        <th>Due</th>
+                        <th>Intake Date</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in jobs %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'repair_detail' job.id %}" style="font-weight: 700; color: var(--primary-color);">
+                                {{ job.job_number }}
+                            </a>
+                        </td>
+                        <td>
+                            <div style="font-weight: 500;">
+                                <a href="{% url 'customer_detail' job.customer.id %}" style="color: inherit;">
+                                    {{ job.customer.name }}
+                                </a>
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">{{ job.customer.phone }}</div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 500;">{{ job.device.brand }} {{ job.device.model }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">IMEI: {{ job.device.imei|default:"N/A" }}</div>
+                        </td>
+                        <td title="{{ job.complaint }}" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem;">
+                            {{ job.complaint }}
+                        </td>
+                        <td>{{ job.assigned_technician.name|default:"Unassigned" }}</td>
+                        <td>
+                            <span class="badge badge-priority-{{ job.priority }}">
+                                {{ job.get_priority_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ job.status|lower }}">
+                                {{ job.get_status_display }}
+                            </span>
+                        </td>
+                        <td>Rs. {{ job.invoice.total|default:0.00|floatformat:2 }}</td>
+                        <td>
+                            {% if job.invoice and job.invoice.due_amount > 0 %}
+                                <span style="color: #dc2626; font-weight: 600;">Rs. {{ job.invoice.due_amount|floatformat:2 }}</span>
+                            {% else %}
+                                <span style="color: #16a34a;">0.00</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size: 0.85rem;">{{ job.received_date|date:"M d, Y" }}</td>
+                        <td style="text-align: right; white-space: nowrap;">
+                            <a href="{% url 'repair_detail' job.id %}" class="btn btn-secondary btn-sm">
+                                <i class="fa-solid fa-gears"></i> Manage
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                            <i class="fa-solid fa-screwdriver-wrench" style="font-size: 2.5rem; margin-bottom: 12px; display: block; opacity: 0.5;"></i>
+                            No repair jobs found in this queue.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MOBILE NATIVE CARD FEED (Visible on mobile screens < 768px) -->
+    <div class="mobile-view-only p-2">
+        {% for job in jobs %}
+        <div class="mobile-repair-card mb-3 p-3 rounded-4 shadow-sm" style="background: var(--card-background); border: 1px solid var(--border-color);">
+            <!-- Top Header: Job # & Badges -->
+            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                <a href="{% url 'repair_detail' job.id %}" class="fw-bold text-primary" style="font-size: 1rem;">
+                    <i class="fa-solid fa-ticket me-1"></i>{{ job.job_number }}
+                </a>
+                <div class="d-flex gap-1">
+                    <span class="badge badge-priority-{{ job.priority }}" style="font-size: 0.7rem;">
+                        {{ job.get_priority_display }}
+                    </span>
+                    <span class="badge badge-{{ job.status|lower }}" style="font-size: 0.7rem;">
+                        {{ job.get_status_display }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Device & Customer Details -->
+            <div class="d-flex align-items-start gap-2 mb-2">
+                <div class="rounded-circle d-flex align-items-center justify-content-center text-primary" style="width: 38px; height: 38px; background: var(--primary-light); flex-shrink: 0;">
+                    <i class="fa-solid fa-mobile-screen fs-5"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <strong class="d-block text-dark" style="font-size: 0.95rem;">{{ job.device.brand }} {{ job.device.model }}</strong>
+                    <div class="text-muted small">
+                        <i class="fa-solid fa-user me-1 text-secondary"></i><strong>{{ job.customer.name }}</strong> ({{ job.customer.phone }})
+                    </div>
+                </div>
+            </div>
+
+            <!-- Complaint snippet -->
+            <div class="p-2 rounded-2 mb-2 text-dark small" style="background: var(--background-color); font-size: 0.8rem;">
+                <span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation me-1"></i>Issue:</span> {{ job.complaint|truncatechars:85 }}
+            </div>
+
+            <!-- Financials & Tech Info -->
+            <div class="d-flex justify-content-between align-items-center small mb-3 pt-1 border-top">
+                <div>
+                    <span class="text-muted">Tech:</span> <strong>{{ job.assigned_technician.name|default:"Unassigned" }}</strong>
+                </div>
+                <div>
+                    <span class="text-muted">Total:</span> <strong>Rs. {{ job.invoice.total|default:0.00|floatformat:0 }}</strong>
+                    {% if job.invoice and job.invoice.due_amount > 0 %}
+                    <span class="badge bg-danger-subtle text-danger ms-1">Due: Rs. {{ job.invoice.due_amount|floatformat:0 }}</span>
+                    {% else %}
+                    <span class="badge bg-success-subtle text-success ms-1">Paid</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Card Action Footer -->
+            <div class="d-grid gap-2">
+                <a href="{% url 'repair_detail' job.id %}" class="btn btn-primary btn-sm py-2 fw-bold rounded-pill shadow-sm">
+                    <i class="fa-solid fa-arrow-right-to-bracket me-1"></i> Open Repair Workflow
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-5 text-muted">
+            <i class="fa-solid fa-screwdriver-wrench fa-3x mb-3 opacity-50"></i>
+            <p>No repair jobs found in this queue.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const repairSearchInput = document.querySelector('input[name="q"]');
+        if (repairSearchInput) {
+            repairSearchInput.addEventListener('input', () => {
+                const val = repairSearchInput.value.toLowerCase().trim();
+                const rows = document.querySelectorAll('.data-table tbody tr');
+                rows.forEach(row => {
+                    if (row.children.length > 1) {
+                        const text = row.innerText.toLowerCase();
+                        row.style.display = text.includes(val) ? '' : 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

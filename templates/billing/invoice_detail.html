@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+{% block title %}Invoice Details — {{ invoice.invoice_number }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Invoice: {{ invoice.invoice_number }}</h1>
+        <p class="page-subtitle">Linked to Job: <strong>{{ invoice.repair_job.job_number }}</strong></p>
+    </div>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;" class="no-print">
+        <a href="{% url 'invoice_list' %}" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> List Invoices
+        </a>
+        {% if whatsapp_chat_url or whatsapp_url %}
+        <button type="button" onclick="copyImageAndSendWhatsApp('{% url 'invoice_image' invoice.id %}', '{{ whatsapp_chat_url }}')" class="btn btn-success" style="background-color: #25d366; color: white; border-color: #25d366; font-weight: 600;" title="Copy Invoice Image and Open Customer WhatsApp Chat (Pure Image, No Text)">
+            <i class="fa-brands fa-whatsapp" style="font-size: 1.1rem; margin-right: 4px;"></i> WhatsApp Image Bill
+        </button>
+        {% endif %}
+        <a href="{% url 'invoice_image' invoice.id %}" target="_blank" class="btn btn-secondary" title="View or Download PNG Image Invoice">
+            <i class="fa-solid fa-file-image" style="color: #0284c7; margin-right: 4px;"></i> Download PNG
+        </a>
+        <a href="{% url 'invoice_pdf' invoice.id %}" target="_blank" class="btn btn-secondary" title="View or Download PDF Invoice">
+            <i class="fa-solid fa-file-pdf" style="color: #dc2626; margin-right: 4px;"></i> Download PDF
+        </a>
+        <a href="{% url 'invoice_print' invoice.id %}" target="_blank" class="btn btn-primary">
+            <i class="fa-solid fa-print"></i> Print A4 Invoice
+        </a>
+    </div>
+</div>
+
+<script>
+async function copyImageAndSendWhatsApp(imgUrl, waUrl) {
+    if (!waUrl) {
+        alert("⚠️ Customer phone number not found for WhatsApp.");
+        return;
+    }
+
+    const docTitle = "Final Invoice";
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    try {
+        const resp = await fetch(imgUrl);
+        const blob = await resp.blob();
+
+        if (navigator.clipboard && window.ClipboardItem) {
+            try {
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]);
+            } catch (clipErr) {
+                console.warn("Clipboard write:", clipErr);
+            }
+        }
+    } catch (e) {
+        console.warn("Image fetch notice: ", e);
+    }
+
+    if (isMobile) {
+        window.location.href = waUrl;
+    } else {
+        showImageCopyToast(docTitle);
+        window.open(waUrl, '_blank');
+    }
+}
+
+function showImageCopyToast(docTitle) {
+    let toast = document.getElementById('image-copy-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'image-copy-toast';
+        toast.style.cssText = `
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 999999;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: #ffffff;
+            border-radius: 12px;
+            padding: 16px 22px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
+            font-size: 0.9rem;
+            max-width: 400px;
+            border: 1px solid #34d399;
+            font-family: inherit;
+        `;
+        document.body.appendChild(toast);
+    }
+    toast.innerHTML = `
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <i class="fa-solid fa-circle-check" style="font-size: 1.4rem; color: #a7f3d0; margin-top: 2px;"></i>
+            <div>
+                <strong style="font-size: 1rem; display: block; margin-bottom: 3px;">${docTitle} Image Copied!</strong>
+                <div style="color: #e6fffa; font-size: 0.84rem; line-height: 1.4;">
+                    Customer's WhatsApp chat is opening.<br>
+                    Press <kbd style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-weight: 700; color: #fff;">Ctrl + V</kbd> to paste and send the crisp image bill directly without text!
+                </div>
+            </div>
+        </div>
+    `;
+    toast.style.display = 'block';
+    setTimeout(() => {
+        if (toast) toast.style.display = 'none';
+    }, 6000);
+}
+</script>
+
+<div class="details-grid">
+    <!-- Left Column: Invoice summary details -->
+    <div style="display: flex; flex-direction: column; gap: 28px;">
+        <!-- Invoice bill items panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title">Charges Breakdown</h2>
+            </div>
+            <div class="panel-body" style="padding: 0;">
+                <div class="table-responsive">
+                    <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Item Description</th>
+                            <th>Unit price</th>
+                            <th>Qty</th>
+                            <th style="text-align: right;">Total price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Spare Parts Used -->
+                        {% for rp in parts %}
+                        <tr>
+                            <td>
+                                <div style="font-weight: 500;">{{ rp.part.name }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Spare Part Stock Item</div>
+                            </td>
+                            <td>Rs. {{ rp.customer_price|floatformat:2 }}</td>
+                            <td>{{ rp.quantity }}</td>
+                            <td style="text-align: right; font-weight: 500;">Rs. {% widthratio rp.customer_price 1 rp.quantity as total_part %}{{ total_part|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                        
+                        <!-- Labor Charge -->
+                        <tr>
+                            <td>
+                                <div style="font-weight: 500;">Labor & Technical Charges</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Service fee</div>
+                            </td>
+                            <td>Rs. {{ labor|floatformat:2 }}</td>
+                            <td>1</td>
+                            <td style="text-align: right; font-weight: 500;">Rs. {{ labor|floatformat:2 }}</td>
+                        </tr>
+                        
+                        <!-- Totals -->
+                        <tr style="background-color: var(--background-color); font-weight: 500;">
+                            <td colspan="3" style="text-align: right; padding: 12px 20px;">Subtotal:</td>
+                            <td style="text-align: right; padding: 12px 20px;">Rs. {{ invoice.subtotal|floatformat:2 }}</td>
+                        </tr>
+                        <tr style="background-color: var(--background-color); font-weight: 500;">
+                            <td colspan="3" style="text-align: right; padding: 12px 20px; color: #dc2626;">Discount Applied:</td>
+                            <td style="text-align: right; padding: 12px 20px; color: #dc2626;">- Rs. {{ invoice.discount|floatformat:2 }}</td>
+                        </tr>
+                        <tr style="background-color: var(--background-color); font-weight: 700; font-size: 1.05rem; border-top: 2px solid var(--border-color);">
+                            <td colspan="3" style="text-align: right; padding: 14px 20px;">Net Total Bill:</td>
+                            <td style="text-align: right; padding: 14px 20px; color: var(--primary-color);">Rs. {{ invoice.total|floatformat:2 }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        </div>
+        
+        <!-- Apply Discount form panel -->
+        <div class="panel no-print">
+            <div class="panel-header">
+                <h2 class="panel-title">Apply Discount / Adjust Pricing</h2>
+            </div>
+            <div class="panel-body">
+                <form method="post" style="display: flex; align-items: flex-end; gap: 16px;">
+                    {% csrf_token %}
+                    <div class="form-group" style="margin-bottom: 0; flex: 1;">
+                        <label class="form-label" for="discount-input">Discount Amount (Rs.)</label>
+                        <div style="position: relative;">
+                            <input type="number" name="discount" id="discount-input" value="{{ invoice.discount }}" step="0.01" min="0" max="{{ invoice.subtotal }}" class="form-control" style="padding-left: 40px;" required>
+                            <i class="fa-solid fa-percent" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-secondary">Apply Discount</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: Balance outstanding & contact card -->
+    <div style="display: flex; flex-direction: column; gap: 28px;">
+        <!-- Outstanding status box -->
+        <div class="panel" style="background: linear-gradient(135deg, var(--secondary-color) 0%, #1e1b4b 100%); color: #ffffff;">
+            <div class="panel-body" style="padding: 28px; text-align: center;">
+                <div style="font-size: 0.85rem; text-transform: uppercase; color: rgba(255,255,255,0.6); letter-spacing: 1px; font-weight: 600;">Outstanding Balance</div>
+                <div style="font-size: 2.25rem; font-weight: 700; margin: 12px 0;">Rs. {{ invoice.due_amount|floatformat:2 }}</div>
+                
+                <div style="display: flex; justify-content: space-around; margin-top: 20px; font-size: 0.9rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+                    <div>
+                        <div style="color: rgba(255,255,255,0.6);">Paid amount</div>
+                        <div style="font-weight: 600; margin-top: 4px; color: #4ade80;">Rs. {{ invoice.paid_amount|floatformat:2 }}</div>
+                    </div>
+                    <div>
+                        <div style="color: rgba(255,255,255,0.6);">Total Invoice</div>
+                        <div style="font-weight: 600; margin-top: 4px;">Rs. {{ invoice.total|floatformat:2 }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Customer & Device Overview -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fa-solid fa-address-book" style="margin-right: 8px;"></i>Customer Profile</h2>
+            </div>
+            <div class="panel-body" style="display: flex; flex-direction: column; gap: 12px; font-size: 0.95rem;">
+                <div>
+                    <strong>Customer:</strong> {{ invoice.repair_job.customer.name }}
+                </div>
+                <div>
+                    <strong>Phone:</strong> {{ invoice.repair_job.customer.phone }}
+                </div>
+                <div>
+                    <strong>Device:</strong> {{ invoice.repair_job.device.brand }} {{ invoice.repair_job.device.model }}
+                </div>
+                <div>
+                    <strong>IMEI:</strong> {{ invoice.repair_job.device.imei|default:"N/A" }}
+                </div>
+                <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 6px;">
+                    <strong>Expected Delivery:</strong>
+                    <div style="color: var(--text-secondary); margin-top: 4px;">{{ invoice.repair_job.expected_delivery_date|date:"M d, Y, h:i A"|default:"Not specified" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

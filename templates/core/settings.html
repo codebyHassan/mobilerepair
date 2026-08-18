@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Shop Settings</h1>
+        <p class="page-subtitle">Configure invoice prefixes, currency, shop details, and branding headers</p>
+    </div>
+</div>
+
+<div class="panel" style="max-width: 800px;">
+    <div class="panel-header">
+        <h2 class="panel-title">Shop Profile & Invoice Settings</h2>
+    </div>
+    <div class="panel-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="shop_name">Shop Name</label>
+                    <input type="text" name="shop_name" id="shop_name" value="{{ settings.shop_name }}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="shop_phone">Shop Phone Number</label>
+                    <input type="text" name="shop_phone" id="shop_phone" value="{{ settings.shop_phone }}" class="form-control">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="shop_address">Shop Address (Printed on Invoices)</label>
+                <textarea name="shop_address" id="shop_address" class="form-control" rows="3">{{ settings.shop_address }}</textarea>
+            </div>
+            
+            <div class="form-row" style="border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 10px;">
+                <div class="form-group">
+                    <label class="form-label" for="currency">Currency Symbol</label>
+                    <input type="text" name="currency" id="currency" value="{{ settings.currency }}" class="form-control" style="width: 100px;" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="invoice_prefix">Invoice Prefix</label>
+                    <input type="text" name="invoice_prefix" id="invoice_prefix" value="{{ settings.invoice_prefix }}" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="job_prefix">Job Prefix</label>
+                    <input type="text" name="job_prefix" id="job_prefix" value="{{ settings.job_prefix }}" class="form-control" required>
+                </div>
+            </div>
+            
+            <!-- Logo Upload -->
+            <div class="form-group" style="margin-bottom: 28px;">
+                <label class="form-label" for="shop_logo">Shop Logo</label>
+                {% if settings.shop_logo %}
+                    <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+                        <img src="{{ settings.shop_logo.url }}" alt="Shop Logo" style="max-height: 60px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                        <span style="font-size: 0.85rem; color: var(--text-secondary);">Current Logo loaded</span>
+                    </div>
+                {% endif %}
+                <input type="file" name="shop_logo" id="shop_logo" class="form-control" accept="image/*">
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Shop Settings
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

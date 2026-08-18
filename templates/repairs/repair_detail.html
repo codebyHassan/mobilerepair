@@ -1,0 +1,713 @@
+{% extends 'base.html' %}
+
+{% block title %}Repair Job {{ job.job_number }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+            <span class="badge badge-{{ job.status|lower }}">{{ job.get_status_display }}</span>
+            <span class="badge badge-priority-{{ job.priority }}">{{ job.get_priority_display }} Priority</span>
+        </div>
+        <h1 class="page-title">Repair Job: {{ job.job_number }}</h1>
+        <p class="page-subtitle">Intake recorded on {{ job.received_date|date:"M d, Y, h:i A" }}</p>
+    </div>
+    
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;" class="no-print">
+        <a href="{% url 'repair_list' %}" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> List Jobs
+        </a>
+        <button class="btn btn-secondary" onclick="openModal('status-modal')">
+            <i class="fa-solid fa-clock-rotate-left"></i> Change Status
+        </button>
+        {% if job.id %}
+        <button type="button" onclick="copyInvoiceImageAndWhatsApp('{% url 'repair_intake_image' job.id %}', '{{ whatsapp_chat_url }}', 'Intake Slip')" class="btn btn-success" style="background-color: #25d366; color: white; border-color: #25d366;" title="Copy Intake Slip PNG Image and Open Customer WhatsApp (Pure Image, No Text)">
+            <i class="fa-brands fa-whatsapp" style="font-size: 1.1rem; margin-right: 4px;"></i> Slip Image
+        </button>
+        {% endif %}
+        {% if job.invoice %}
+        <button type="button" onclick="copyInvoiceImageAndWhatsApp('{% url 'invoice_image' job.invoice.id %}', '{{ whatsapp_chat_url }}', 'Final Invoice')" class="btn btn-success" style="background-color: #128c7e; color: white; border-color: #128c7e;" title="Copy Invoice PNG Image and Open Customer WhatsApp (Pure Image, No Text)">
+            <i class="fa-brands fa-whatsapp" style="font-size: 1.1rem; margin-right: 4px;"></i> Invoice Image
+        </button>
+        <a href="{% url 'invoice_image' job.invoice.id %}" target="_blank" class="btn btn-secondary" title="Download PNG Invoice">
+            <i class="fa-solid fa-file-image" style="color: #0284c7; margin-right: 4px;"></i> PNG Image
+        </a>
+        {% endif %}
+        {% if job.invoice %}
+        <a href="{% url 'invoice_print' job.invoice.id %}" target="_blank" class="btn btn-primary">
+            <i class="fa-solid fa-print"></i> Print Invoice
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+async function copyInvoiceImageAndWhatsApp(imgUrl, waUrl, docTitle) {
+    docTitle = docTitle || 'Invoice';
+    if (!waUrl) {
+        alert("⚠️ Customer phone number not found for WhatsApp.");
+        return;
+    }
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    try {
+        const resp = await fetch(imgUrl);
+        const blob = await resp.blob();
+
+        // Clipboard Copy
+        if (navigator.clipboard && window.ClipboardItem) {
+            try {
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]);
+            } catch (clipErr) {
+                console.warn("Clipboard write:", clipErr);
+            }
+        }
+    } catch (e) {
+        console.warn("Image fetch notice: ", e);
+    }
+
+    if (isMobile) {
+        window.location.href = waUrl;
+    } else {
+        showImageCopyToast(docTitle);
+        window.open(waUrl, '_blank');
+    }
+}
+
+function showImageCopyToast(docTitle) {
+    let toast = document.getElementById('image-copy-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'image-copy-toast';
+        toast.style.cssText = `
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 999999;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: #ffffff;
+            border-radius: 12px;
+            padding: 16px 22px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
+            font-size: 0.9rem;
+            max-width: 400px;
+            border: 1px solid #34d399;
+            font-family: inherit;
+        `;
+        document.body.appendChild(toast);
+    }
+    toast.innerHTML = `
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <i class="fa-solid fa-circle-check" style="font-size: 1.4rem; color: #a7f3d0; margin-top: 2px;"></i>
+            <div>
+                <strong style="font-size: 1rem; display: block; margin-bottom: 3px;">${docTitle} Image Copied!</strong>
+                <div style="color: #e6fffa; font-size: 0.84rem; line-height: 1.4;">
+                    Customer's WhatsApp chat is opening.<br>
+                    Press <kbd style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-weight: 700; color: #fff;">Ctrl + V</kbd> to paste and send the crisp image directly without text!
+                </div>
+            </div>
+        </div>
+    `;
+    toast.style.display = 'block';
+    setTimeout(() => {
+        if (toast) toast.style.display = 'none';
+    }, 6000);
+}
+</script>
+
+<!-- Hidden Quick Status Form -->
+<form id="quick-status-form" method="post" action="{% url 'change_status' job.id %}">
+    {% csrf_token %}
+    <input type="hidden" name="status" id="quick-status-input" value="">
+    <input type="hidden" name="note" id="quick-status-note" value="">
+    <input type="hidden" name="force_delivery" id="quick-status-force" value="false">
+</form>
+
+<script>
+function triggerQuickStatus(statusVal, noteText = '', forceVal = 'false') {
+    if (statusVal === 'DELIVERED') {
+        const due = parseFloat("{{ job.invoice.due_amount|default:0 }}");
+        if (due > 0) {
+            if (confirm(`⚠️ Customer has Rs. ${due.toLocaleString()} remaining unpaid!\n\nClick OK to force delivery anyway. Click Cancel if you want to record their payment first.`)) {
+                document.getElementById('quick-status-force').value = 'true';
+            } else {
+                // Open the payment modal
+                openModal('payment-modal');
+                return;
+            }
+        }
+    }
+    document.getElementById('quick-status-input').value = statusVal;
+    document.getElementById('quick-status-note').value = noteText || `Status changed to ${statusVal} via Quick Action Bar`;
+    document.getElementById('quick-status-form').submit();
+}
+</script>
+
+<!-- Quick Status Action Bar -->
+<div class="panel no-print" style="margin-bottom: 24px; border-left: 4px solid var(--primary-color);">
+    <div class="panel-body" style="padding: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">Current Job Status</span>
+            <div style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                <span class="badge badge-{{ job.status|lower }}">{{ job.get_status_display }}</span>
+                {% if job.status == 'RECEIVED' %}
+                    <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-secondary);">— Checked in. Waiting for diagnosis.</span>
+                {% elif job.status == 'DIAGNOSING' %}
+                    <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-secondary);">— Checking circuits, display, battery etc.</span>
+                {% elif job.status == 'WAITING_APPROVAL' %}
+                    <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-secondary);">— Quotation/estimate shared. Waiting customer OK.</span>
+                {% elif job.status == 'APPROVED' %}
+                    <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-secondary);">— Approved. Ready to start fixing.</span>
+                {% elif job.status == 'WAITING_PARTS' %}
+                    <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-secondary);">— Spare parts are ordered from supplier.</span>
+                {% elif job.status == 'REPAIRING' %}
+                    <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-secondary);">— Active repair work on the bench.</span>
+                {% elif job.status == 'QUALITY_CHECK' %}
+                    <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-secondary);">— Checking sensors, touchscreen, camera.</span>
+                {% elif job.status == 'READY_FOR_PICKUP' %}
+                    <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-secondary);">— Ready! Customer can collect.</span>
+                {% elif job.status == 'DELIVERED' %}
+                    <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-secondary);">— Delivered to customer. Closed.</span>
+                {% else %}
+                    <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-secondary);">— Closed.</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Status Action Buttons -->
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            {% if job.status == 'RECEIVED' %}
+                <button type="button" class="btn btn-primary" onclick="triggerQuickStatus('DIAGNOSING', 'Moved to diagnosing')">
+                    <i class="fa-solid fa-magnifying-glass"></i> Start Diagnosis
+                </button>
+                <button type="button" class="btn btn-danger" onclick="if(confirm('Cancel this job?')) triggerQuickStatus('CANCELLED', 'Cancelled by shop')">
+                    <i class="fa-solid fa-ban"></i> Cancel Job
+                </button>
+            {% elif job.status == 'DIAGNOSING' %}
+                <button type="button" class="btn btn-warning" style="background-color: #ea580c; color: white; border-color: #ea580c;" onclick="triggerQuickStatus('WAITING_APPROVAL', 'Shared estimate, waiting customer ok')">
+                    <i class="fa-solid fa-clock"></i> Wait for Approval
+                </button>
+                <button type="button" class="btn btn-primary" onclick="triggerQuickStatus('APPROVED', 'Customer approved directly')">
+                    <i class="fa-solid fa-thumbs-up"></i> Mark Approved
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="triggerQuickStatus('WAITING_PARTS', 'Parts needed')">
+                    <i class="fa-solid fa-cubes"></i> Wait for Parts
+                </button>
+            {% elif job.status == 'WAITING_APPROVAL' %}
+                <button type="button" class="btn btn-success" style="background-color: #16a34a; color: white; border-color: #16a34a;" onclick="triggerQuickStatus('APPROVED', 'Customer approved estimate')">
+                    <i class="fa-solid fa-check"></i> Customer Approved
+                </button>
+                <button type="button" class="btn btn-danger" onclick="if(confirm('Customer rejected estimate? Phone returned un-repaired.')) triggerQuickStatus('CANCELLED', 'Customer rejected estimate')">
+                    <i class="fa-solid fa-xmark"></i> Rejected / Cancel
+                </button>
+            {% elif job.status == 'APPROVED' %}
+                <button type="button" class="btn btn-primary" onclick="triggerQuickStatus('REPAIRING', 'Repair started')">
+                    <i class="fa-solid fa-screwdriver-wrench"></i> Start Repairing
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="triggerQuickStatus('WAITING_PARTS', 'Order parts')">
+                    <i class="fa-solid fa-box-open"></i> Wait for Parts
+                </button>
+            {% elif job.status == 'WAITING_PARTS' %}
+                <button type="button" class="btn btn-primary" onclick="triggerQuickStatus('REPAIRING', 'Parts received, starting repair')">
+                    <i class="fa-solid fa-wrench"></i> Parts Received, Start Repair
+                </button>
+            {% elif job.status == 'REPAIRING' %}
+                <button type="button" class="btn btn-primary" onclick="triggerQuickStatus('QUALITY_CHECK', 'Repair completed, checking quality')">
+                    <i class="fa-solid fa-flask"></i> Move to Quality Check
+                </button>
+            {% elif job.status == 'QUALITY_CHECK' %}
+                <button type="button" class="btn btn-success" style="background-color: #16a34a; color: white; border-color: #16a34a;" onclick="triggerQuickStatus('READY_FOR_PICKUP', 'Passed quality test')">
+                    <i class="fa-solid fa-bell"></i> Ready for Pickup
+                </button>
+            {% elif job.status == 'READY_FOR_PICKUP' %}
+                <button type="button" class="btn btn-success" style="background-color: #15803d; color: white; border-color: #15803d; font-weight: 600;" onclick="triggerQuickStatus('DELIVERED', 'Mobile hand over to customer')">
+                    <i class="fa-solid fa-handshake"></i> Deliver to Customer
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="if(confirm('Return device to customer unrepairable/cancelled?')) triggerQuickStatus('RETURNED', 'Returned to customer')">
+                    <i class="fa-solid fa-rotate-left"></i> Return Device
+                </button>
+            {% else %}
+                <span style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;"><i class="fa-solid fa-lock"></i> Locked in closed status.</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="details-grid">
+    <!-- Left Column: Core Job Details, Parts Used, and Invoice Summaries -->
+    <div style="display: flex; flex-direction: column; gap: 28px;">
+        <!-- Customer & Device Info -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fa-solid fa-circle-info" style="margin-right: 8px;"></i>Customer & Device Details</h2>
+            </div>
+            <div class="panel-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <div>
+                        <h3 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 8px;">Customer</h3>
+                        <div style="font-weight: 600; font-size: 1.05rem;">
+                            <a href="{% url 'customer_detail' job.customer.id %}" style="color: var(--primary-color);">
+                                {{ job.customer.name }}
+                            </a>
+                        </div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 4px;">Phone: {{ job.customer.phone }}</div>
+                        {% if job.customer.whatsapp %}
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 2px;"><i class="fa-brands fa-whatsapp" style="color:#25d366;"></i> {{ job.customer.whatsapp }}</div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <h3 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 8px;">Device</h3>
+                        <div style="font-weight: 600; font-size: 1.05rem;">{{ job.device.brand }} {{ job.device.model }}</div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 4px;">IMEI: {{ job.device.imei|default:"N/A" }}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">Color: {{ job.device.color|default:"N/A" }} | Storage: {{ job.device.storage|default:"N/A" }}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">Lock Info: <code style="background-color: var(--background-color); padding: 2px 6px; border-radius: 4px;">{{ job.device.device_password|default:"None" }}</code></div>
+                    </div>
+                </div>
+                
+                <div style="border-top: 1px solid var(--border-color); margin-top: 20px; padding-top: 16px;">
+                    <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-secondary);">Customer Complaint</div>
+                    <div style="font-size: 0.95rem; color: var(--text-primary); margin-top: 6px; line-height: 1.4; background-color: var(--background-color); padding: 12px; border-radius: var(--radius-sm); border-left: 3px solid var(--primary-color);">
+                        {{ job.complaint }}
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px;">
+                    <div>
+                        <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">Accessories Kept</div>
+                        <div style="font-size: 0.9rem; color: var(--text-primary); margin-top: 4px;">{{ job.accessories|default:"None logged" }}</div>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">Expected Delivery Date</div>
+                        <div style="font-size: 0.9rem; color: var(--text-primary); margin-top: 4px;">{{ job.expected_delivery_date|date:"M d, Y, h:i A"|default:"Not specified" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Parts Used Section -->
+        <div class="panel">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 class="panel-title"><i class="fa-solid fa-boxes-stacked" style="margin-right: 8px;"></i>Parts Used in Repair</h2>
+                <button class="btn btn-secondary btn-sm no-print" onclick="openModal('add-part-modal')">
+                    <i class="fa-solid fa-plus"></i> Add Part
+                </button>
+            </div>
+            <div class="panel-body" style="padding: 0;">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Part Name / SKU</th>
+                                <th>Quantity</th>
+                                <th>Purchase Cost</th>
+                                <th>Billed Price</th>
+                                <th>Total charged</th>
+                                <th class="no-print" style="text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rp in parts %}
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 600;">{{ rp.part.name }}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">SKU: {{ rp.part.sku }}</div>
+                                </td>
+                                <td>{{ rp.quantity }}</td>
+                                <td>Rs. {{ rp.purchase_cost|floatformat:2 }}</td>
+                                <td>Rs. {{ rp.customer_price|floatformat:2 }}</td>
+                                <td>Rs. {% widthratio rp.customer_price 1 rp.quantity as total_part %}{{ total_part|floatformat:2 }}</td>
+                                <td class="no-print" style="text-align: right;">
+                                    <form method="post" action="{% url 'remove_part' rp.id %}" style="display: inline;" onsubmit="return confirm('Remove this part from repair? Stock will be refunded.');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger btn-sm" title="Remove part" style="padding:4px 8px;"><i class="fa-solid fa-trash-can"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 24px; color: var(--text-muted);">
+                                    No parts added to this repair yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Invoice & Payments Summary -->
+        {% if job.invoice %}
+        <div class="panel">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 class="panel-title"><i class="fa-solid fa-file-invoice-dollar" style="margin-right: 8px;"></i>Customer Invoice & Payments</h2>
+                {% if job.invoice.due_amount > 0 %}
+                <button class="btn btn-success btn-sm no-print" onclick="openModal('payment-modal')">
+                    <i class="fa-solid fa-money-bill-wave"></i> Add Payment
+                </button>
+                {% endif %}
+            </div>
+            <div class="panel-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 28px;">
+                    <!-- Invoice Numbers -->
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary);">Subtotal (Parts + Labor):</span>
+                            <span style="font-weight: 500;">Rs. {{ job.invoice.subtotal|floatformat:2 }}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary);">Discount:</span>
+                            <span style="font-weight: 500; color: #dc2626;">- Rs. {{ job.invoice.discount|floatformat:2 }}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 8px; font-weight: 600;">
+                            <span>Invoice Total:</span>
+                            <span>Rs. {{ job.invoice.total|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Payment Status -->
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary);">Total Paid:</span>
+                            <span style="font-weight: 600; color: #16a34a;">Rs. {{ job.invoice.paid_amount|floatformat:2 }}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-weight: 600;">
+                            <span style="color: var(--text-secondary);">Remaining Due:</span>
+                            {% if job.invoice.due_amount > 0 %}
+                            <span style="color: #dc2626; font-size: 1.1rem;">Rs. {{ job.invoice.due_amount|floatformat:2 }}</span>
+                            {% else %}
+                            <span style="color: #16a34a; font-size: 1.1rem;">Rs. 0.00</span>
+                            {% endif %}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border-color); padding-top: 8px; font-size: 0.85rem; color: var(--text-secondary);">
+                            <span>Estimated Job Profit:</span>
+                            <span style="font-weight: 600; color: #16a34a;">Rs. {{ estimated_profit|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Payment Transactions Ledger -->
+                {% if job.invoice.payments.exists %}
+                <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                    <h4 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 12px;">Payments Log</h4>
+                    <div class="table-responsive">
+                        <table class="data-table" style="font-size: 0.85rem;">
+                            <thead>
+                                <tr>
+                                    <th>Ref #</th>
+                                    <th>Amount Paid</th>
+                                    <th>Method</th>
+                                    <th>Received By</th>
+                                    <th>Payment Date</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in job.invoice.payments.all %}
+                                <tr>
+                                    <td>PAY-{{ payment.id|stringformat:"05d" }}</td>
+                                    <td style="font-weight: 600; color: #16a34a;">Rs. {{ payment.amount|floatformat:2 }}</td>
+                                    <td><span style="text-transform: capitalize;">{{ payment.get_payment_method_display }}</span></td>
+                                    <td>{{ payment.received_by.username|default:"System" }}</td>
+                                    <td>{{ payment.created_at|date:"M d, Y, h:i A" }}</td>
+                                    <td style="color: var(--text-secondary);">{{ payment.notes|default:"—" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Column: Status Timeline, Diagnosis & Estimate Forms -->
+    <div style="display: flex; flex-direction: column; gap: 28px;">
+        <!-- Technical Diagnosis Form Card -->
+        <div class="panel">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 class="panel-title"><i class="fa-solid fa-clipboard-question" style="margin-right: 8px;"></i>Technician Diagnosis</h2>
+                <div style="display: flex; gap: 6px;">
+                    <button type="button" onclick="copyInvoiceImageAndWhatsApp('{% url 'diagnosis_image' job.id %}', '{{ whatsapp_chat_url }}', 'Diagnosis Quotation Slip')" class="btn btn-success btn-sm" style="background-color: #25d366; color: white; border-color: #25d366; padding: 4px 10px; font-size: 0.8rem;" title="Copy Diagnosis Quotation PNG Image and Open WhatsApp (Pure Image, No Text)">
+                        <i class="fa-brands fa-whatsapp"></i> WhatsApp Bill
+                    </button>
+                    <a href="{% url 'diagnosis_thermal_slip' job.id %}" target="_blank" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 0.8rem;">
+                        <i class="fa-solid fa-receipt"></i> 3-Inch Slip
+                    </a>
+                </div>
+            </div>
+            <div class="panel-body">
+                <form method="post" action="{% url 'update_diagnosis' job.id %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label class="form-label">Diagnosis Findings</label>
+                        {{ diagnosis_form.technician_diagnosis }}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Recommended Repair</label>
+                        {{ diagnosis_form.recommended_repair }}
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm" style="width: 100%;">
+                        <i class="fa-solid fa-save"></i> Save Technical Diagnosis
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Estimate Details Form Card -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fa-solid fa-calculator" style="margin-right: 8px;"></i>Price Estimate</h2>
+            </div>
+            <div class="panel-body">
+                <form method="post" action="{% url 'update_estimate' job.id %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label class="form-label">Estimated Repair Cost (Quote) <span class="text-danger">*</span></label>
+                        <div style="position: relative;">
+                            {{ estimate_form.estimated_cost }}
+                            <span style="position: absolute; left: 12px; top:50%; transform:translateY(-50%); font-weight:600; font-size:0.9rem; color:var(--text-muted);">Rs.</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Customer Decision Status</label>
+                        {{ estimate_form.status }}
+                    </div>
+                    
+                    <div class="form-group" id="rejection-reason-group" style="display: none;">
+                        <label class="form-label">Reason for Rejection</label>
+                        {{ estimate_form.rejection_reason }}
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-sm" style="width: 100%;">
+                        <i class="fa-solid fa-save"></i> Save Estimate
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Status Timeline Log -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fa-solid fa-timeline" style="margin-right: 8px;"></i>Job Timeline History</h2>
+            </div>
+            <div class="panel-body">
+                <div class="timeline">
+                    {% for log in history %}
+                    <div class="timeline-item completed">
+                        <div class="timeline-marker">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">
+                                <span>{{ log.new_status }}</span>
+                            </div>
+                            <div class="timeline-time">
+                                {{ log.timestamp|date:"M d, Y, h:i A" }} by <strong>{{ log.changed_by.username|default:"System" }}</strong>
+                            </div>
+                            {% if log.note %}
+                            <div class="timeline-note">{{ log.note }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal dialogs -->
+
+<!-- 1. Change Status Modal -->
+<div class="modal-backdrop" id="status-modal">
+    <div class="modal-content">
+        <form method="post" action="{% url 'change_status' job.id %}">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h3 class="modal-title">Change Job Status</h3>
+                <button type="button" class="btn-secondary" style="border:none; cursor:pointer;" onclick="closeModal('status-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">New Status</label>
+                    <select name="status" class="form-control">
+                        {% for st_val, st_lbl in statuses %}
+                            <option value="{{ st_val }}" {% if job.status == st_val %}selected{% endif %}>{{ st_lbl }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Note / Reason</label>
+                    <textarea name="note" class="form-control" placeholder="Add technical note for status update..." rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('status-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Status</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 2. Add Part Modal -->
+<div class="modal-backdrop" id="add-part-modal">
+    <div class="modal-content">
+        <form method="post" action="{% url 'use_part' job.id %}">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h3 class="modal-title">Consume Inventory Part</h3>
+                <button type="button" class="btn-secondary" style="border:none; cursor:pointer;" onclick="closeModal('add-part-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Select Part from Stock</label>
+                    <select name="part_id" id="part-select" class="form-control" required>
+                        <option value="">-- Choose Spare Part --</option>
+                        <!-- Dynamic options filled inside document query or view context -->
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" name="quantity" value="1" min="1" class="form-control" id="part-qty" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Customer Price (Billed)</label>
+                        <input type="number" name="customer_price" step="0.01" class="form-control" id="part-price" required>
+                    </div>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted);" id="stock-feedback"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('add-part-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Part to Repair</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 3. Add Payment Modal -->
+{% if job.invoice %}
+<div class="modal-backdrop" id="payment-modal">
+    <div class="modal-content">
+        <form method="post" action="{% url 'payment_create' job.invoice.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="redirect_job_id" value="{{ job.id }}">
+            <div class="modal-header">
+                <h3 class="modal-title">Record Payment Receipt</h3>
+                <button type="button" class="btn-secondary" style="border:none; cursor:pointer;" onclick="closeModal('payment-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Amount Received *</label>
+                    <input type="number" name="amount" value="{{ job.invoice.due_amount }}" step="0.01" max="{{ job.invoice.due_amount }}" min="0.01" class="form-control" required>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top:4px;">
+                        Remaining balance due: <strong>Rs. {{ job.invoice.due_amount }}</strong>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Payment Method *</label>
+                    <select name="payment_method" class="form-control">
+                        {% for meth_val, meth_lbl in payment_methods %}
+                            <option value="{{ meth_val }}">{{ meth_lbl }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea name="notes" class="form-control" placeholder="Advance payment, cash, card swipe ref, etc." rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('payment-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Receipt</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Modal controls
+    function openModal(id) {
+        document.getElementById(id).classList.add('show');
+    }
+    
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('show');
+    }
+    
+    // Close modals on clicking backdrop
+    document.querySelectorAll('.modal-backdrop').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal(modal.id);
+            }
+        });
+    });
+
+    // Handle rejection reason display depending on status
+    const statusSelect = document.getElementById('id_status');
+    const rejGroup = document.getElementById('rejection-reason-group');
+    if (statusSelect && rejGroup) {
+        function checkStatus() {
+            if (statusSelect.value === 'rejected') {
+                rejGroup.style.display = 'block';
+            } else {
+                rejGroup.style.display = 'none';
+            }
+        }
+        statusSelect.addEventListener('change', checkStatus);
+        checkStatus();
+    }
+    
+    // Fetch and populate parts in modal dropdown
+    window.addEventListener('DOMContentLoaded', () => {
+        const partSelect = document.getElementById('part-select');
+        if (partSelect) {
+            fetch('{% url "part_list" %}?format=json')
+                .then(res => res.json())
+                .then(parts => {
+                    parts.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p.id;
+                        opt.dataset.price = p.selling_price;
+                        opt.dataset.stock = p.current_stock;
+                        opt.innerText = `${p.name} (Stock: ${p.current_stock} | Rs. ${p.selling_price})`;
+                        partSelect.appendChild(opt);
+                    });
+                })
+                .catch(err => console.error('Error fetching parts list:', err));
+                
+            // Update fields based on select
+            partSelect.addEventListener('change', () => {
+                const opt = partSelect.options[partSelect.selectedIndex];
+                const feedback = document.getElementById('stock-feedback');
+                const priceInput = document.getElementById('part-price');
+                
+                if (opt && opt.value) {
+                    priceInput.value = opt.dataset.price;
+                    feedback.innerText = `Current available stock: ${opt.dataset.stock}`;
+                    feedback.style.color = opt.dataset.stock > 0 ? '#16a34a' : '#dc2626';
+                    
+                    // Set max qty
+                    document.getElementById('part-qty').max = opt.dataset.stock;
+                } else {
+                    priceInput.value = '';
+                    feedback.innerText = '';
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

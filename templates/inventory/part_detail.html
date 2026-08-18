@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}Stock Item Details — {{ part.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+            {% if status == 'OUT OF STOCK' %}
+                <span class="badge" style="background-color: var(--status-cancelled-bg); color: var(--status-cancelled-text);">Out of Stock</span>
+            {% elif status == 'LOW STOCK' %}
+                <span class="badge" style="background-color: var(--status-waiting-approval-bg); color: var(--status-waiting-approval-text);">Low Stock Alert</span>
+            {% else %}
+                <span class="badge" style="background-color: var(--status-ready-bg); color: var(--status-ready-text);">In Stock</span>
+            {% endif %}
+            <span class="badge" style="background-color: var(--primary-light); color: var(--primary-color);">SKU: {{ part.sku }}</span>
+        </div>
+        <h1 class="page-title">{{ part.name }}</h1>
+        <p class="page-subtitle">Compatible with {{ part.compatible_device|default:"Generic" }}</p>
+    </div>
+    
+    <div style="display: flex; gap: 12px;">
+        <a href="{% url 'part_list' %}" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> List Stock
+        </a>
+        <a href="{% url 'part_edit' part.id %}" class="btn btn-secondary">
+            <i class="fa-solid fa-pen-to-square"></i> Edit Product
+        </a>
+        <a href="{% url 'transaction_create' part.id %}" class="btn btn-primary">
+            <i class="fa-solid fa-box-open"></i> Log Stock Adjust
+        </a>
+    </div>
+</div>
+
+<!-- Stock summary panels -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Current Inventory</div>
+            <div class="stat-value">{{ part.current_stock }}</div>
+            <div class="stat-desc" style="color: var(--text-muted);">Alert threshold: {{ part.minimum_stock }}</div>
+        </div>
+        <div class="stat-icon">
+            <i class="fa-solid fa-boxes-stacked"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Cost Value (Total)</div>
+            <div class="stat-value">Rs. {{ stock_value|floatformat:2 }}</div>
+            <div class="stat-desc" style="color: var(--text-muted);">Per Unit cost: Rs. {{ part.purchase_cost|floatformat:2 }}</div>
+        </div>
+        <div class="stat-icon" style="background-color: #f3e8ff; color: #9333ea;">
+            <i class="fa-solid fa-coins"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Retail Selling Price</div>
+            <div class="stat-value">Rs. {{ part.selling_price|floatformat:2 }}</div>
+            <div class="stat-desc" style="color: #16a34a; font-weight: 500;">
+                Markup: Rs. {{ markup|floatformat:2 }}
+            </div>
+        </div>
+        <div class="stat-icon" style="background-color: #dcfce7; color: #16a34a;">
+            <i class="fa-solid fa-tag"></i>
+        </div>
+    </div>
+</div>
+
+<div class="details-grid">
+    <!-- Left Column: Transaction logs -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title"><i class="fa-solid fa-file-waveform" style="margin-right: 8px;"></i>Stock Ledger Log</h2>
+        </div>
+        <div class="panel-body" style="padding: 0;">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Action Type</th>
+                            <th>Qty Change</th>
+                            <th>Linked Repair</th>
+                            <th>Remarks / Note</th>
+                            <th>Logged By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tx in transactions %}
+                        <tr>
+                            <td style="font-size: 0.85rem;">{{ tx.created_at|date:"M d, Y, h:i A" }}</td>
+                            <td>
+                                {% if tx.transaction_type == 'purchase' %}
+                                    <span class="badge" style="background-color: #dcfce7; color: #16a34a;">Purchase +</span>
+                                {% elif tx.transaction_type == 'repair_use' %}
+                                    <span class="badge" style="background-color: #fee2e2; color: #dc2626;">Repair Use -</span>
+                                {% elif tx.transaction_type == 'adjustment' %}
+                                    <span class="badge" style="background-color: #f1f5f9; color: var(--text-primary);">Audit Adjust</span>
+                                {% elif tx.transaction_type == 'return' %}
+                                    <span class="badge" style="background-color: #e0f2fe; color: #0284c7;">Refund Return +</span>
+                                {% elif tx.transaction_type == 'damaged' %}
+                                    <span class="badge" style="background-color: #fef3c7; color: #d97706;">Damaged -</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-weight: 600; {% if tx.quantity > 0 %}color: #16a34a;{% else %}color: #dc2626;{% endif %}">
+                                {% if tx.quantity > 0 %}+{% endif %}{{ tx.quantity }}
+                            </td>
+                            <td>
+                                {% if tx.repair_job %}
+                                    <a href="{% url 'repair_detail' tx.repair_job.id %}" style="font-weight: 600; color: var(--primary-color);">
+                                        {{ tx.repair_job.job_number }}
+                                    </a>
+                                {% else %}
+                                    <span style="color: var(--text-muted);">—</span>
+                                {% endif %}
+                            </td>
+                            <td style="color: var(--text-secondary); font-size: 0.85rem;">{{ tx.note|default:"—" }}</td>
+                            <td>{{ tx.created_by.username|default:"System" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 24px; color: var(--text-muted);">
+                                No stock transactions recorded.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: Product specifications detail info -->
+    <div style="display: flex; flex-direction: column; gap: 28px;">
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fa-solid fa-boxes-packing" style="margin-right: 8px;"></i>Specs Info</h2>
+            </div>
+            <div class="panel-body">
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Category</div>
+                        <div style="font-weight: 500; font-size: 1.05rem;">{{ part.category }}</div>
+                    </div>
+                    {% if part.brand %}
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Brand / Maker</div>
+                        <div style="font-weight: 500; font-size: 1.05rem;">{{ part.brand }}</div>
+                    </div>
+                    {% endif %}
+                    {% if part.supplier %}
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Supplier</div>
+                        <div style="font-weight: 500; font-size: 0.95rem;">{{ part.supplier }}</div>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Internal Notes / Storage Bin</div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); background-color: var(--background-color); padding: 12px; border-radius: var(--radius-sm);">
+                            {{ part.notes|default:"No notes registered" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

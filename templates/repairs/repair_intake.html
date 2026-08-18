@@ -1,0 +1,587 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .unified-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+    }
+    
+    @media (max-width: 992px) {
+        .unified-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .tabs-container {
+        display: flex;
+        border-bottom: 2px solid var(--border-color);
+        margin-bottom: 20px;
+        gap: 8px;
+    }
+    .tab-btn {
+        padding: 10px 16px;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        font-size: 0.95rem;
+    }
+    .tab-btn:hover {
+        color: var(--primary-color);
+    }
+    .tab-btn.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+    .customer-select-card, .device-select-card {
+        border: 1px solid var(--border-color);
+        background-color: var(--card-background);
+        padding: 12px 14px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: var(--transition);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .customer-select-card:hover, .device-select-card:hover {
+        border-color: var(--primary-color);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    .customer-select-card.selected, .device-select-card.selected {
+        border: 2px solid var(--primary-color);
+        background-color: var(--primary-light);
+    }
+    .step-number {
+        background-color: var(--primary-color);
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.85rem;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+    .section-title {
+        font-size: 1.15rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Quick Repair Intake</h1>
+        <p class="page-subtitle">Unified wizard to check-in mobile repairs instantly</p>
+    </div>
+    <a href="{% url 'repair_list' %}" class="btn btn-secondary">
+        <i class="fa-solid fa-arrow-left-long"></i> Back to Queue
+    </a>
+</div>
+
+<form method="post" action="{% url 'repair_intake' %}" id="unified-intake-form">
+    {% csrf_token %}
+    
+    <!-- Hidden fields for selected state -->
+    <input type="hidden" name="customer_mode" id="customer_mode" value="existing">
+    <input type="hidden" name="customer_id" id="customer_id" value="">
+    
+    <input type="hidden" name="device_mode" id="device_mode" value="existing">
+    <input type="hidden" name="device_id" id="device_id" value="">
+
+    <div class="unified-container">
+        
+        <!-- LEFT COLUMN: Customer and Device Registry -->
+        <div style="display: flex; flex-direction: column; gap: 28px;">
+            
+            <!-- STEP 1: CUSTOMER DETAILS -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="section-title">
+                        <span class="step-number">1</span> Customer Registry
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <!-- Tab buttons -->
+                    <div class="tabs-container">
+                        <button type="button" class="tab-btn active" id="btn-cust-existing" onclick="setCustomerMode('existing')">
+                            <i class="fa-solid fa-search"></i> Search Existing
+                        </button>
+                        <button type="button" class="tab-btn" id="btn-cust-new" onclick="setCustomerMode('new')">
+                            <i class="fa-solid fa-user-plus"></i> Register New Customer
+                        </button>
+                    </div>
+                    
+                    <!-- Mode 1: Search customer -->
+                    <div id="wrapper-cust-existing">
+                        <div class="form-group" style="position: relative;">
+                            <label class="form-label" for="cust-search">Live Lookup (Name, Phone or WhatsApp)</label>
+                            <div style="position: relative;">
+                                <input type="text" id="cust-search" class="form-control" placeholder="Search customer records..." autocomplete="off">
+                                <i class="fa-solid fa-magnifying-glass" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Search results -->
+                        <div id="cust-search-results" style="max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;">
+                            <div style="text-align: center; padding: 16px; color: var(--text-muted); font-size: 0.9rem;">
+                                Type to look up customer records...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mode 2: Create customer -->
+                    <div id="wrapper-cust-new" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">Full Name *</label>
+                            <input type="text" name="customer_name" class="form-control" placeholder="Customer's full name">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Phone Number *</label>
+                                <input type="text" name="customer_phone" class="form-control" placeholder="e.g. 03001234567">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">WhatsApp (if different)</label>
+                                <input type="text" name="customer_whatsapp" class="form-control" placeholder="e.g. 03001234567">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" name="customer_email" class="form-control" placeholder="e.g. customer@gmail.com">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Address</label>
+                            <input type="text" name="customer_address" class="form-control" placeholder="Shop/Home/Work address">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Notes</label>
+                            <textarea name="customer_notes" class="form-control" rows="2" placeholder="Any customer VIP preferences, special alerts..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- STEP 2: DEVICE DETAILS -->
+            <div class="panel" id="panel-device" style="opacity: 0.5; pointer-events: none; transition: var(--transition);">
+                <div class="panel-header">
+                    <div class="section-title">
+                        <span class="step-number">2</span> Device Registration
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <!-- Tab buttons for Device -->
+                    <div class="tabs-container" id="device-tabs-container">
+                        <button type="button" class="tab-btn active" id="btn-dev-existing" onclick="setDeviceMode('existing')">
+                            <i class="fa-solid fa-list"></i> Customer Devices
+                        </button>
+                        <button type="button" class="tab-btn" id="btn-dev-new" onclick="setDeviceMode('new')">
+                            <i class="fa-solid fa-plus"></i> Register New Device
+                        </button>
+                    </div>
+                    
+                    <!-- Mode 1: Choose device -->
+                    <div id="wrapper-dev-existing">
+                        <div id="dev-list" style="display: flex; flex-direction: column; gap: 8px;">
+                            <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem;">
+                                Select a customer above to see their devices...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mode 2: Create device -->
+                    <div id="wrapper-dev-new" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Brand / Manufacturer *</label>
+                                <input type="text" name="device_brand" id="dev-brand" class="form-control" placeholder="Apple, Samsung, Vivo...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Model Name *</label>
+                                <input type="text" name="device_model" id="dev-model" class="form-control" placeholder="iPhone 13, Galaxy S23...">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">IMEI / Serial Number</label>
+                                <input type="text" name="device_imei" class="form-control" placeholder="IMEI or serial (optional)">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Color</label>
+                                <input type="text" name="device_color" class="form-control" placeholder="e.g. Space Gray, Blue">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Storage Capacity</label>
+                                <input type="text" name="device_storage" class="form-control" placeholder="e.g. 128GB, 256GB">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Screen Lock PIN / Pattern</label>
+                                <input type="text" name="device_password" class="form-control" placeholder="Passcode or lock pattern">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Device Physical Condition</label>
+                            <textarea name="device_physical_condition" id="dev-phys-cond" class="form-control" rows="2" placeholder="Describe screen cracks, camera lens dents, frame scratches..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Accessories Kept with Device</label>
+                            <textarea name="device_accessories_received" id="dev-accessories" class="form-control" rows="2" placeholder="SIM Tray, back cover, original box..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- RIGHT COLUMN: Repair Job details -->
+        <div>
+            <div class="panel" style="position: sticky; top: 20px;">
+                <div class="panel-header">
+                    <div class="section-title">
+                        <span class="step-number">3</span> Job Intake Details
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label class="form-label" style="font-weight: 600;">Customer Complaint / Issue *</label>
+                        <textarea name="complaint" class="form-control" rows="3" placeholder="Describe exactly what needs fixing (e.g. Screen repair, not charging, water damage check)..." required></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Priority Level</label>
+                            <select name="priority" class="form-control">
+                                {% for val, lbl in priorities %}
+                                    <option value="{{ val }}" {% if val == 'medium' %}selected{% endif %}>{{ lbl }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Expected Delivery</label>
+                            <input type="datetime-local" name="expected_delivery_date" class="form-control">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Assign Technician</label>
+                        <select name="assigned_technician" class="form-control">
+                            <option value="">-- Unassigned --</option>
+                            {% for tech in technicians %}
+                                <option value="{{ tech.id }}">{{ tech.name }} ({{ tech.specialization|default:"General" }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Physical Intake Condition (Override)</label>
+                        <textarea name="physical_condition" id="job-phys-cond" class="form-control" rows="2" placeholder="Leave empty to use device physical condition automatically..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Accessories Kept (Override)</label>
+                        <textarea name="accessories" id="job-accessories" class="form-control" rows="2" placeholder="Leave empty to use device accessories automatically..."></textarea>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 24px;">
+                        <label class="form-label">Internal Job Notes / Remarks</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Any internal check-in notes..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 600;">
+                        <i class="fa-solid fa-screwdriver-wrench"></i> Register Repair Job & Open Bill
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function() {
+        'use strict';
+        
+        let searchDebounce;
+        const searchInput = document.getElementById('cust-search');
+        const resultsDiv = document.getElementById('cust-search-results');
+        
+        const customerModeInput = document.getElementById('customer_mode');
+        const customerIdInput = document.getElementById('customer_id');
+        
+        const deviceModeInput = document.getElementById('device_mode');
+        const deviceIdInput = document.getElementById('device_id');
+        
+        // Tab buttons and wrappers
+        const btnCustExisting = document.getElementById('btn-cust-existing');
+        const btnCustNew = document.getElementById('btn-cust-new');
+        const wrapCustExisting = document.getElementById('wrapper-cust-existing');
+        const wrapCustNew = document.getElementById('wrapper-cust-new');
+        
+        const btnDevExisting = document.getElementById('btn-dev-existing');
+        const btnDevNew = document.getElementById('btn-dev-new');
+        const wrapDevExisting = document.getElementById('wrapper-dev-existing');
+        const wrapDevNew = document.getElementById('wrapper-dev-new');
+        
+        const panelDevice = document.getElementById('panel-device');
+        const devListDiv = document.getElementById('dev-list');
+        const deviceTabsContainer = document.getElementById('device-tabs-container');
+        
+        // Search execution
+        function executeSearch(query) {
+            resultsDiv.innerHTML = '<div style="text-align: center; padding: 12px; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>';
+            
+            fetch(`{% url 'global_search_api' %}?q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    resultsDiv.innerHTML = '';
+                    if (data.customers && data.customers.length > 0) {
+                        data.customers.forEach(c => {
+                            const card = document.createElement('div');
+                            card.className = 'customer-select-card';
+                            card.dataset.id = c.id;
+                            
+                            // Highlight if currently selected
+                            if (customerIdInput.value === String(c.id)) {
+                                card.classList.add('selected');
+                            }
+                            
+                            card.innerHTML = `
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">${c.name}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">
+                                        Phone: <strong>${c.phone}</strong> | Outstanding: <span style="color: #dc2626;">${c.outstanding}</span>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-secondary btn-sm" style="pointer-events:none; padding: 4px 8px; font-size: 0.75rem;">
+                                    ${customerIdInput.value === String(c.id) ? 'Selected <i class="fa-solid fa-check"></i>' : 'Select'}
+                                </button>
+                            `;
+                            
+                            card.onclick = () => selectCustomer(c.id, c.name, card);
+                            resultsDiv.appendChild(card);
+                        });
+                    } else {
+                        resultsDiv.innerHTML = `<div style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 0.9rem;">
+                            ${query ? `No records found matching "${query}"` : 'No customer records yet.'}
+                        </div>`;
+                    }
+                })
+                .catch(err => {
+                    console.error('Error fetching customers:', err);
+                    resultsDiv.innerHTML = '<div style="text-align: center; padding: 12px; color: #dc2626;">Failed to load search results.</div>';
+                });
+        }
+        
+        // Bind search input
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchDebounce);
+                searchDebounce = setTimeout(() => {
+                    executeSearch(searchInput.value.trim());
+                }, 200);
+            });
+        }
+        
+        // Initial search
+        executeSearch('');
+        
+        // Switch Customer Tab Mode
+        window.setCustomerMode = function(mode) {
+            customerModeInput.value = mode;
+            
+            if (mode === 'existing') {
+                btnCustExisting.classList.add('active');
+                btnCustNew.classList.remove('active');
+                wrapCustExisting.style.display = 'block';
+                wrapCustNew.style.display = 'none';
+                
+                // Clear validation requirements on new customer
+                document.querySelectorAll('#wrapper-cust-new input[required]').forEach(el => el.removeAttribute('required'));
+                
+                // If a customer was already selected, restore device panel
+                if (customerIdInput.value) {
+                    panelDevice.style.opacity = '1';
+                    panelDevice.style.pointerEvents = 'auto';
+                    deviceTabsContainer.style.display = 'flex';
+                } else {
+                    panelDevice.style.opacity = '0.5';
+                    panelDevice.style.pointerEvents = 'none';
+                }
+            } else {
+                btnCustExisting.classList.remove('active');
+                btnCustNew.classList.add('active');
+                wrapCustExisting.style.display = 'none';
+                wrapCustNew.style.display = 'block';
+                
+                // Set required validation for new customer registration
+                document.querySelector('#wrapper-cust-new input[name="customer_name"]').setAttribute('required', 'required');
+                document.querySelector('#wrapper-cust-new input[name="customer_phone"]').setAttribute('required', 'required');
+                
+                // Enable device panel and force 'new' device mode
+                panelDevice.style.opacity = '1';
+                panelDevice.style.pointerEvents = 'auto';
+                deviceTabsContainer.style.display = 'none'; // Hide device list tabs (force new device)
+                setDeviceMode('new');
+            }
+        };
+        
+        // Switch Device Tab Mode
+        window.setDeviceMode = function(mode) {
+            deviceModeInput.value = mode;
+            
+            if (mode === 'existing') {
+                btnDevExisting.classList.add('active');
+                btnDevNew.classList.remove('active');
+                wrapDevExisting.style.display = 'block';
+                wrapDevNew.style.display = 'none';
+                
+                document.getElementById('dev-brand').removeAttribute('required');
+                document.getElementById('dev-model').removeAttribute('required');
+            } else {
+                btnDevExisting.classList.remove('active');
+                btnDevNew.classList.add('active');
+                wrapDevExisting.style.display = 'none';
+                wrapDevNew.style.display = 'block';
+                
+                document.getElementById('dev-brand').setAttribute('required', 'required');
+                document.getElementById('dev-model').setAttribute('required', 'required');
+            }
+        };
+        
+        // Select Customer Event
+        function selectCustomer(id, name, cardElement) {
+            customerIdInput.value = id;
+            
+            // Highlight selected customer card
+            document.querySelectorAll('.customer-select-card').forEach(c => {
+                c.classList.remove('selected');
+                const btn = c.querySelector('button');
+                if (btn) btn.innerHTML = 'Select';
+            });
+            cardElement.classList.add('selected');
+            const cardBtn = cardElement.querySelector('button');
+            if (cardBtn) cardBtn.innerHTML = 'Selected <i class="fa-solid fa-check"></i>';
+            
+            // Enable device selection panel
+            panelDevice.style.opacity = '1';
+            panelDevice.style.pointerEvents = 'auto';
+            deviceTabsContainer.style.display = 'flex';
+            setDeviceMode('existing');
+            
+            // Load customer devices
+            devListDiv.innerHTML = '<div style="text-align: center; padding: 12px; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Loading customer devices...</div>';
+            
+            fetch(`/customers/api/devices/${id}/`)
+                .then(res => res.json())
+                .then(data => {
+                    devListDiv.innerHTML = '';
+                    if (data.devices && data.devices.length > 0) {
+                        data.devices.forEach(d => {
+                            const devCard = document.createElement('div');
+                            devCard.className = 'device-select-card';
+                            devCard.dataset.id = d.id;
+                            
+                            if (deviceIdInput.value === String(d.id)) {
+                                devCard.classList.add('selected');
+                            }
+                            
+                            devCard.innerHTML = `
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem;">${d.brand} ${d.model}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+                                        IMEI: <strong>${d.imei}</strong> | Color: ${d.color} | Storage: ${d.storage}
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-secondary btn-sm" style="pointer-events:none; padding: 4px 8px; font-size: 0.75rem;">
+                                    ${deviceIdInput.value === String(d.id) ? 'Selected <i class="fa-solid fa-check"></i>' : 'Select'}
+                                </button>
+                            `;
+                            
+                            devCard.onclick = () => selectDevice(d.id, d.brand, d.model, d.physical_condition, d.accessories_received, devCard);
+                            devListDiv.appendChild(devCard);
+                        });
+                    } else {
+                        devListDiv.innerHTML = `
+                            <div style="text-align: center; padding: 16px; color: var(--text-secondary); border: 1px dashed var(--border-color); border-radius: var(--radius-md);">
+                                <p style="font-size: 0.85rem; margin-bottom: 8px;">No devices registered for this customer yet.</p>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="setDeviceMode('new')">
+                                    <i class="fa-solid fa-plus"></i> Register New Device
+                                </button>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(err => {
+                    console.error('Error loading devices:', err);
+                    devListDiv.innerHTML = '<div style="text-align: center; padding: 12px; color: #dc2626;">Failed to load device list.</div>';
+                });
+        }
+        
+        // Select Device Event
+        function selectDevice(id, brand, model, condition, accessories, cardElement) {
+            deviceIdInput.value = id;
+            
+            // Highlight selected device card
+            document.querySelectorAll('.device-select-card').forEach(c => {
+                c.classList.remove('selected');
+                const btn = c.querySelector('button');
+                if (btn) btn.innerHTML = 'Select';
+            });
+            cardElement.classList.add('selected');
+            const cardBtn = cardElement.querySelector('button');
+            if (cardBtn) cardBtn.innerHTML = 'Selected <i class="fa-solid fa-check"></i>';
+            
+            // Autofill physical condition and accessories override fields on the job intake form to save time
+            const jobPhysCond = document.getElementById('job-phys-cond');
+            const jobAccessories = document.getElementById('job-accessories');
+            
+            if (jobPhysCond && jobPhysCond.value === '') {
+                jobPhysCond.placeholder = `Default: ${condition || 'No initial condition noted'}`;
+            }
+            if (jobAccessories && jobAccessories.value === '') {
+                jobAccessories.placeholder = `Default: ${accessories || 'None'}`;
+            }
+        }
+        
+        // Check form validations before submitting
+        const intakeForm = document.getElementById('unified-intake-form');
+        if (intakeForm) {
+            intakeForm.addEventListener('submit', (e) => {
+                if (customerModeInput.value === 'existing' && !customerIdInput.value) {
+                    alert('⚠️ Please select a customer from the search list, or register a new customer.');
+                    e.preventDefault();
+                    return false;
+                }
+                
+                if (customerModeInput.value === 'existing' && deviceModeInput.value === 'existing' && !deviceIdInput.value) {
+                    alert('⚠️ Please select a device from the customer\'s list, or register a new device.');
+                    e.preventDefault();
+                    return false;
+                }
+            });
+        }
+        
+    })();
+</script>
+{% endblock %}

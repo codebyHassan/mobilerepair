@@ -1,0 +1,653 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Technician ESS Portal — {{ tech_profile.name|default:request.user.username }}{% endblock %}
+
+{% block extra_css %}
+<!-- Bootstrap 5.3.3 & Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<style>
+/* ==========================================================================
+   PREMIUM TECHNICIAN ESS DASHBOARD STYLING
+   ========================================================================== */
+.ess-portal-wrapper {
+    font-family: var(--font-family, 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif);
+    color: #0f172a;
+    padding-bottom: 2.5rem;
+}
+
+/* 1. HERO HEADER BANNER */
+.ess-hero-card {
+    background: linear-gradient(135deg, #090d16 0%, #1e1b4b 50%, #0f172a 100%);
+    color: #ffffff;
+    border-radius: 20px;
+    padding: 1.75rem 2rem;
+    box-shadow: 0 15px 35px -10px rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.ess-hero-card::before {
+    content: '';
+    position: absolute;
+    top: -60%;
+    right: -20%;
+    width: 350px;
+    height: 350px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.35) 0%, rgba(255, 255, 255, 0) 70%);
+    pointer-events: none;
+}
+
+.tech-badge-chip {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #38bdf8;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.35rem 1rem;
+    border-radius: 50px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.btn-hero-primary {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 50px;
+    padding: 0.65rem 1.65rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-hero-primary:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.45);
+}
+
+.btn-hero-secondary {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    border-radius: 50px;
+    padding: 0.65rem 1.35rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-hero-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
+/* 2. STATISTIC KPI CARDS */
+.stat-widget-card {
+    background: #ffffff;
+    border-radius: 18px;
+    border: 1px solid #e2e8f0;
+    padding: 1.35rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+}
+
+.stat-widget-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    border-color: #cbd5e1;
+}
+
+.stat-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.45rem;
+}
+
+.icon-blue-gradient { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #1d4ed8; }
+.icon-green-gradient { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); color: #15803d; }
+.icon-amber-gradient { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #b45309; }
+.icon-rose-gradient { background: linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%); color: #be123c; }
+
+.stat-metric-value {
+    font-size: 1.85rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+.stat-metric-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+}
+
+/* 3. MOBILE TOUCH-FRIENDLY JOB CARD */
+.mobile-repair-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    padding: 1.15rem;
+    margin-bottom: 0.9rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+    transition: all 0.2s ease;
+}
+
+.mobile-repair-card:hover {
+    border-color: #94a3b8;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+}
+
+.job-code-badge {
+    background: #0f172a;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.status-badge-custom {
+    padding: 0.35rem 0.85rem;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+}
+
+.btn-open-lifecycle {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.88rem;
+    border-radius: 12px;
+    border: none;
+    padding: 0.65rem 1rem;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.btn-open-lifecycle:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+}
+
+/* 4. SEARCH & FILTER TOOLBAR */
+.search-box-round {
+    border-radius: 50px;
+    padding-left: 2.75rem;
+    padding-right: 1.25rem;
+    height: 42px;
+    border: 1px solid #cbd5e1;
+    background-color: #f8fafc;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.search-box-round:focus {
+    background-color: #ffffff;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+.search-icon-inside {
+    position: absolute;
+    left: 1.1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 0.95rem;
+}
+
+/* 5. DUAL TABS STYLING */
+.nav-pills-ess {
+    background: #f1f5f9;
+    padding: 0.3rem;
+    border-radius: 50px;
+}
+
+.nav-pills-ess .nav-link {
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #475569;
+    padding: 0.45rem 1.15rem;
+    transition: all 0.2s ease;
+}
+
+.nav-pills-ess .nav-link.active {
+    background-color: #0f172a;
+    color: #ffffff;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.2);
+}
+
+/* Quick Filter Badges */
+.filter-chip-btn {
+    border-radius: 50px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.3rem 0.85rem;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-chip-btn:hover, .filter-chip-btn.active {
+    background: #0f172a;
+    color: #ffffff;
+    border-color: #0f172a;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ess-portal-wrapper container-fluid px-3 px-md-4 py-3">
+
+    <!-- 1. HERO GREETING BANNER -->
+    <div class="ess-hero-card">
+        <div class="row align-items-center g-3">
+            <div class="col-lg-7">
+                <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+                    <span class="badge bg-primary px-3 py-1.5 rounded-pill fw-semibold" style="font-size: 0.78rem;">
+                        <i class="bi bi-shield-check me-1"></i> Technician Portal
+                    </span>
+                    <span class="tech-badge-chip">
+                        <i class="bi bi-person-badge-fill me-1.5 text-warning"></i> {{ tech_profile.name|default:request.user.username }}
+                    </span>
+                </div>
+                <h1 class="text-white fw-bold mb-1 fs-3">Technician Workspace</h1>
+                <p class="text-slate-300 mb-0 small" style="opacity: 0.9;">
+                    Manage your assigned repair queue, perform customer intake, and view your commission earnings & supplier credit khata.
+                </p>
+            </div>
+            <div class="col-lg-5">
+                <div class="d-flex flex-column flex-sm-row gap-2 justify-content-lg-end">
+                    <a href="{% url 'repair_intake' %}" class="btn-hero-primary">
+                        <i class="bi bi-plus-circle-fill me-2 fs-5"></i> New Repair Intake
+                    </a>
+                    <a href="{% url 'technician_commissions' %}" class="btn-hero-secondary">
+                        <i class="bi bi-cash-stack me-2"></i> Commissions
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. FOUR KPI STAT METRIC CARDS -->
+    <div class="row g-3 mb-4">
+        <!-- Metric 1: My Active Queue -->
+        <div class="col-6 col-lg-3">
+            <div class="stat-widget-card">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="stat-metric-label">My Active Queue</span>
+                    <div class="stat-icon-wrapper icon-blue-gradient">
+                        <i class="bi bi-phone"></i>
+                    </div>
+                </div>
+                <div class="stat-metric-value text-dark">{{ active_jobs_count }} <span class="fs-6 text-muted font-normal">Jobs</span></div>
+                <div class="d-flex align-items-center gap-1 mt-2">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small">
+                        <i class="bi bi-clock-history me-1"></i>In Progress
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 2: Total Commission Earned -->
+        <div class="col-6 col-lg-3">
+            <div class="stat-widget-card">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="stat-metric-label">Total Earned</span>
+                    <div class="stat-icon-wrapper icon-green-gradient">
+                        <i class="bi bi-cash-coin"></i>
+                    </div>
+                </div>
+                <div class="stat-metric-value text-success">Rs. {{ total_earned|floatformat:0 }}</div>
+                <div class="d-flex align-items-center gap-1 mt-2">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill small">
+                        <i class="bi bi-wallet-fill me-1"></i>Net Earned
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 3: Pending Payout -->
+        <div class="col-6 col-lg-3">
+            <div class="stat-widget-card">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="stat-metric-label">Pending Payout</span>
+                    <div class="stat-icon-wrapper icon-amber-gradient">
+                        <i class="bi bi-hourglass-split"></i>
+                    </div>
+                </div>
+                <div class="stat-metric-value text-warning">Rs. {{ pending_payout|floatformat:0 }}</div>
+                <div class="d-flex align-items-center gap-1 mt-2">
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill small">
+                        <i class="bi bi-arrow-repeat me-1"></i>Unsettled
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 4: Supplier Udhar Due -->
+        <div class="col-6 col-lg-3">
+            <div class="stat-widget-card">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="stat-metric-label">Supplier Udhar</span>
+                    <div class="stat-icon-wrapper icon-rose-gradient">
+                        <i class="bi bi-journal-bookmark-fill"></i>
+                    </div>
+                </div>
+                <div class="stat-metric-value text-danger">Rs. {{ my_supplier_udhar_total|floatformat:0 }}</div>
+                <div class="d-flex align-items-center gap-1 mt-2">
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill small">
+                        <i class="bi bi-exclamation-circle-fill me-1"></i>My Sourced Parts
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. MAIN DASHBOARD CONTENT (2 COLUMNS) -->
+    <div class="row g-4">
+
+        <!-- LEFT COLUMN: REPAIR JOBS QUEUE (CARDS ON MOBILE + TABLE ON DESKTOP) -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                
+                <!-- Card Header with Instant Search -->
+                <div class="card-header bg-white py-3 px-3 px-md-4 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div>
+                        <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+                            <i class="bi bi-tools text-primary"></i> My Assigned Repair Queue
+                            <span class="badge bg-dark rounded-pill fs-7">{{ recent_jobs.count }}</span>
+                        </h5>
+                        <span class="text-muted small">Real-time status of your active and completed jobs</span>
+                    </div>
+
+                    <!-- Instant Filter Search Input -->
+                    <div class="position-relative" style="min-width: 250px; flex: 1; max-width: 320px;">
+                        <i class="bi bi-search search-icon-inside"></i>
+                        <input type="text" id="essSearchBox" class="form-control search-box-round" placeholder="Search job #, customer, device..." onkeyup="filterEssJobItems()">
+                    </div>
+                </div>
+
+                <div class="card-body p-3">
+
+                    <!-- 1. MOBILE RESPONSIVE CARDS VIEW (SCREEN < 768px) -->
+                    <div class="d-md-none" id="mobileCardsContainer">
+                        {% for job in recent_jobs %}
+                        <div class="mobile-repair-card ess-job-card" data-search="{{ job.job_number }} {{ job.customer.name }} {{ job.customer.phone }} {{ job.device.brand }} {{ job.device.model }} {{ job.get_status_display }}">
+                            <!-- Top Bar: Job Number & Status Badge -->
+                            <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
+                                <a href="{% url 'repair_lifecycle_stage' job.id job.current_stage %}" class="job-code-badge">
+                                    <i class="bi bi-qr-code me-1.5 text-info"></i> {{ job.job_number }}
+                                </a>
+                                <span class="status-badge-custom bg-primary-subtle text-primary border border-primary-subtle">
+                                    {{ job.get_status_display }}
+                                </span>
+                            </div>
+
+                            <!-- Customer & Device Grid -->
+                            <div class="row g-2 mb-3">
+                                <div class="col-7">
+                                    <span class="text-muted d-block small" style="font-size: 0.72rem; font-weight: 600;">CUSTOMER</span>
+                                    <strong class="text-dark d-block text-truncate fs-6">{{ job.customer.name }}</strong>
+                                    <a href="tel:{{ job.customer.phone }}" class="text-decoration-none text-muted small d-inline-flex align-items-center mt-0.5">
+                                        <i class="bi bi-telephone-fill text-success me-1"></i> {{ job.customer.phone }}
+                                    </a>
+                                </div>
+                                <div class="col-5 border-start ps-2">
+                                    <span class="text-muted d-block small" style="font-size: 0.72rem; font-weight: 600;">DEVICE</span>
+                                    <strong class="text-dark d-block text-truncate fs-6">{{ job.device.brand }} {{ job.device.model }}</strong>
+                                    <span class="badge bg-secondary-subtle text-secondary small" style="font-size: 0.68rem;">{{ job.get_priority_display|title }} Priority</span>
+                                </div>
+                            </div>
+
+                            <!-- Single Tap Action Button -->
+                            <a href="{% url 'repair_lifecycle_stage' job.id job.current_stage %}" class="btn-open-lifecycle">
+                                <i class="bi bi-play-circle-fill fs-6"></i> Continue Repair Stage
+                            </a>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                            No repair jobs found in your queue.
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- 2. DESKTOP HIGH-DENSITY TABLE VIEW (SCREEN >= 768px) -->
+                    <div class="d-none d-md-block table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="desktopJobsTable">
+                            <thead class="table-light text-secondary small fw-bold text-uppercase">
+                                <tr>
+                                    <th>Job #</th>
+                                    <th>Customer</th>
+                                    <th>Device Details</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for job in recent_jobs %}
+                                <tr class="ess-job-card" data-search="{{ job.job_number }} {{ job.customer.name }} {{ job.customer.phone }} {{ job.device.brand }} {{ job.device.model }} {{ job.get_status_display }}">
+                                    <td>
+                                        <a href="{% url 'repair_lifecycle_stage' job.id job.current_stage %}" class="job-code-badge">
+                                            <i class="bi bi-qr-code me-1 text-info"></i> {{ job.job_number }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ job.customer.name }}</div>
+                                        <div class="text-muted small"><i class="bi bi-telephone me-1 text-success"></i>{{ job.customer.phone }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold text-dark">{{ job.device.brand }} {{ job.device.model }}</div>
+                                        {% if job.device.imei %}<div class="text-muted small" style="font-size: 0.72rem;">IMEI: {{ job.device.imei }}</div>{% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2.5 py-1 text-capitalize">{{ job.get_priority_display }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1">{{ job.get_status_display }}</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'repair_lifecycle_stage' job.id job.current_stage %}" class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-semibold shadow-sm">
+                                            <i class="bi bi-play-circle me-1"></i> Open Stage
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+                                        No repair jobs assigned to your queue yet.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: DUAL-TABBED SIDEBAR (COMMISSIONS & SUPPLIER UDHAR KHATA) -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                
+                <!-- Dual Nav Tabs -->
+                <div class="card-header bg-white py-3 px-3 border-bottom">
+                    <ul class="nav nav-pills nav-pills-ess nav-justified" id="essSideNavTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="tab-comm-btn" data-bs-toggle="pill" data-bs-target="#tab-comm-content" type="button" role="tab">
+                                <i class="bi bi-cash-coin me-1"></i> Commissions
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-udhar-btn" data-bs-toggle="pill" data-bs-target="#tab-udhar-content" type="button" role="tab">
+                                <i class="bi bi-journal-bookmark-fill me-1"></i> Supplier Udhar
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="tab-content" id="essSideNavContent">
+
+                        <!-- TAB 1: COMMISSIONS -->
+                        <div class="tab-pane fade show active" id="tab-comm-content" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Job #</th>
+                                            <th>Rate</th>
+                                            <th class="text-end">Earned</th>
+                                            <th class="text-center">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for comm in recent_commissions %}
+                                        <tr>
+                                            <td>
+                                                <a href="{% url 'repair_lifecycle_stage' comm.repair_job.id 'COMMISSION_CALCULATION' %}" class="fw-bold text-primary text-decoration-none">
+                                                    {{ comm.repair_job.job_number }}
+                                                </a>
+                                            </td>
+                                            <td class="text-muted">{{ comm.commission_rate }}%</td>
+                                            <td class="text-end fw-bold text-success">Rs. {{ comm.commission_amount|floatformat:0 }}</td>
+                                            <td class="text-center">
+                                                {% if comm.is_paid %}
+                                                <span class="badge bg-success-subtle text-success border border-success rounded-pill px-2 py-0.5" style="font-size: 0.7rem;">PAID</span>
+                                                {% else %}
+                                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning rounded-pill px-2 py-0.5" style="font-size: 0.7rem;">PENDING</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="4" class="text-center py-4 text-muted small">No commission records logged.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="p-3 bg-light border-top text-center">
+                                <a href="{% url 'technician_commissions' %}" class="btn btn-outline-dark btn-sm rounded-pill px-3 fw-semibold">
+                                    View Full Commission Ledger <i class="bi bi-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: SUPPLIER UDHAR KHATA -->
+                        <div class="tab-pane fade" id="tab-udhar-content" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0" style="font-size: 0.82rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Part / Supplier</th>
+                                            <th>Job #</th>
+                                            <th class="text-end">Cost</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for rp in my_udhar_parts %}
+                                        <tr>
+                                            <td>
+                                                <strong class="d-block text-dark">{{ rp.part.name }}</strong>
+                                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-1.5 py-0 rounded-pill" style="font-size: 0.68rem;">
+                                                    <i class="bi bi-shop me-1"></i>{{ rp.part.supplier_fk.name|default:rp.part.supplier|default:"Supplier Udhar" }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'repair_lifecycle_stage' rp.repair_job.id 'PARTS_ISSUE' %}" class="fw-semibold text-primary text-decoration-none">
+                                                    {{ rp.repair_job.job_number }}
+                                                </a>
+                                            </td>
+                                            <td class="text-end fw-bold text-danger">Rs. {% widthratio rp.purchase_cost 1 rp.quantity %}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="3" class="text-center py-4 text-muted small">No supplier credit/udhar parts logged.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="p-3 bg-light border-top d-flex align-items-center justify-content-between">
+                                <span class="text-muted small fw-bold">My Total Udhar Due:</span>
+                                <strong class="text-danger fs-6">Rs. {{ my_supplier_udhar_total|floatformat:2 }}</strong>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Bootstrap 5.3.3 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// Real-time client search filter
+function filterEssJobItems() {
+    const input = document.getElementById('essSearchBox').value.toLowerCase().trim();
+    const items = document.querySelectorAll('.ess-job-card');
+    items.forEach(item => {
+        const searchData = (item.getAttribute('data-search') || '').toLowerCase();
+        if (searchData.includes(input)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+</script>
+{% endblock %}

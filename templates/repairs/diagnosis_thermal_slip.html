@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnosis & Bench Slip - {{ job.job_number }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #0f172a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        /* Top Action Bar (No Print) */
+        .action-bar {
+            width: 100%;
+            max-width: 80mm;
+            margin-bottom: 16px;
+            display: flex;
+            gap: 8px;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background-color: #2563eb;
+            color: #ffffff;
+        }
+        .btn-primary:hover { background-color: #1d4ed8; }
+
+        .btn-secondary {
+            background-color: #ffffff;
+            color: #334155;
+            border-color: #cbd5e1;
+        }
+        .btn-secondary:hover { background-color: #f8fafc; }
+
+        .btn-success {
+            background-color: #16a34a;
+            color: #ffffff;
+        }
+        .btn-success:hover { background-color: #15803d; }
+
+        /* 3-Inch (80mm) Thermal Slip Container */
+        .thermal-slip {
+            width: 80mm;
+            max-width: 80mm;
+            background-color: #ffffff;
+            padding: 12px 10px;
+            font-family: 'Courier Prime', 'Courier New', Courier, monospace;
+            font-size: 11px;
+            line-height: 1.35;
+            color: #000000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+        }
+
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .left { text-align: left; }
+        .bold { font-weight: 700; }
+        .uppercase { text-transform: uppercase; }
+
+        .divider {
+            border-top: 1px dashed #000000;
+            margin: 6px 0;
+        }
+
+        .double-divider {
+            border-top: 2px dashed #000000;
+            margin: 8px 0;
+        }
+
+        .shop-header {
+            text-align: center;
+            margin-bottom: 6px;
+        }
+
+        .shop-name {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .shop-contact {
+            font-size: 10px;
+            color: #222;
+        }
+
+        .slip-title {
+            font-size: 12px;
+            font-weight: 700;
+            background-color: #000;
+            color: #fff;
+            padding: 3px 0;
+            margin: 6px 0;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+
+        .info-label {
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .info-value {
+            text-align: right;
+            word-break: break-word;
+        }
+
+        .highlight-box {
+            border: 1.5px solid #000;
+            padding: 5px 6px;
+            margin: 6px 0;
+            background-color: #fdfdfd;
+        }
+
+        .highlight-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            border-bottom: 1px dotted #000;
+            padding-bottom: 2px;
+            margin-bottom: 4px;
+        }
+
+        .barcode-section {
+            text-align: center;
+            margin: 8px 0 4px 0;
+        }
+
+        .barcode-box {
+            display: inline-block;
+            border: 1px solid #000;
+            padding: 4px 12px;
+            font-family: 'Courier Prime', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+
+        .signature-line {
+            margin-top: 14px;
+            padding-top: 4px;
+            border-top: 1px dotted #000;
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+        }
+
+        /* PRINT STYLES */
+        @media print {
+            body {
+                background: none;
+                padding: 0;
+                margin: 0;
+            }
+
+            .action-bar {
+                display: none !important;
+            }
+
+            .thermal-slip {
+                width: 78mm !important;
+                max-width: 78mm !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 4px 2px !important;
+                margin: 0 auto !important;
+            }
+
+            @page {
+                size: 80mm auto;
+                margin: 0mm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Action Toolbar (Hidden when printing) -->
+    <div class="action-bar no-print">
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="fa-solid fa-print"></i> Print Slip
+        </button>
+        <a href="{% url 'repair_lifecycle_stage' job.id 'DIAGNOSIS' %}" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> Lifecycle
+        </a>
+        <a href="{% url 'repair_detail' job.id %}" class="btn btn-secondary">
+            <i class="fa-solid fa-eye"></i> Job #{{ job.job_number }}
+        </a>
+    </div>
+
+    <!-- 3-INCH THERMAL RECEIPT SLIP -->
+    <div class="thermal-slip">
+        
+        <!-- Header -->
+        <div class="shop-header">
+            <div class="shop-name">{{ settings.shop_name|upper }}</div>
+            <div class="shop-contact">{{ settings.shop_phone|default:"" }}</div>
+            {% if settings.shop_address %}
+            <div class="shop-contact" style="font-size: 9px;">{{ settings.shop_address }}</div>
+            {% endif %}
+        </div>
+
+        <div class="slip-title">BENCH DIAGNOSIS SLIP</div>
+
+        <!-- Barcode / Job Identifier -->
+        <div class="barcode-section">
+            <div class="barcode-box"># {{ job.job_number }}</div>
+            <div style="font-size: 9px; margin-top: 2px;">INTAKE DATE: {{ job.created_at|date:"d M Y, h:i A" }}</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Customer & Device Details -->
+        <div class="info-row">
+            <span class="info-label">CUSTOMER:</span>
+            <span class="info-value bold">{{ job.customer.name }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">PHONE:</span>
+            <span class="info-value">{{ job.customer.phone }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">DEVICE:</span>
+            <span class="info-value bold">{{ job.device.brand }} {{ job.device.model }}</span>
+        </div>
+        {% if job.device.imei %}
+        <div class="info-row">
+            <span class="info-label">IMEI/SN:</span>
+            <span class="info-value">{{ job.device.imei }}</span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <span class="info-label">PRIORITY:</span>
+            <span class="info-value bold uppercase">{{ job.get_priority_display }}</span>
+        </div>
+
+        <!-- Lock Code / Passcode Box -->
+        <div class="highlight-box">
+            <div class="info-row">
+                <span class="info-label">SCREEN LOCK / PIN:</span>
+                <span class="info-value bold" style="font-size: 13px;">{{ job.device.device_password|default:"NO LOCK / PATTERN" }}</span>
+            </div>
+            {% if job.device.pattern_code %}
+            <div class="info-row">
+                <span class="info-label">PATTERN CODE:</span>
+                <span class="info-value">{{ job.device.pattern_code }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Intake Complaint -->
+        <div style="margin: 4px 0;">
+            <div class="bold" style="font-size: 10px;">CUSTOMER COMPLAINT:</div>
+            <div style="padding-left: 4px; font-style: italic;">{{ job.complaint|default:"General inspection & servicing" }}</div>
+        </div>
+
+        {% if job.physical_condition %}
+        <div style="margin: 3px 0; font-size: 10px;">
+            <span class="bold">CONDITION:</span> {{ job.physical_condition }}
+        </div>
+        {% endif %}
+
+        <div class="double-divider"></div>
+
+        <!-- Technician Diagnosis Findings -->
+        <div class="highlight-box" style="border-width: 1px; background-color: #fafafa;">
+            <div class="highlight-title">🔍 DIAGNOSIS FAULT FINDINGS</div>
+            <div class="bold" style="font-size: 11px; margin-bottom: 4px;">
+                {{ diagnosis.technician_diagnosis|default:"Inspection pending or standard fault assessment." }}
+            </div>
+
+            <div class="highlight-title" style="margin-top: 6px;">🛠️ RECOMMENDED WORK / ACTION</div>
+            <div style="font-size: 11px;">
+                {{ diagnosis.recommended_repair|default:"Parts replacement & service required." }}
+            </div>
+        </div>
+
+        <!-- Financial Quotation Summary -->
+        <div class="divider"></div>
+        <div class="bold center uppercase" style="font-size: 10px; margin-bottom: 4px;">QUOTATION & ESTIMATE</div>
+
+        <div class="info-row" style="font-size: 12px;">
+            <span class="bold">TOTAL ESTIMATED QUOTE:</span>
+            <span class="bold">Rs. {{ estimate.estimated_cost|default:0|floatformat:2 }}</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Assigned Technician & Signature -->
+        <div class="info-row" style="margin-top: 4px;">
+            <span class="info-label">TECHNICIAN:</span>
+            <span class="info-value bold">{{ job.assigned_technician.name|default:"Shop Bench / Unassigned" }}</span>
+        </div>
+
+        <div class="signature-line">
+            <span>Tech Sign: ______________</span>
+            <span>Date: {{ today|date:"d/m/Y" }}</span>
+        </div>
+
+        <div class="center" style="font-size: 9px; margin-top: 8px; color: #555;">
+            *** SHOP BENCH & LAB RECORD ***
+        </div>
+    </div>
+
+    <script>
+        // Auto-trigger print dialog if ?autoprint=1 in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('autoprint') === '1') {
+            window.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => { window.print(); }, 400);
+            });
+        }
+    </script>
+</body>
+</html>

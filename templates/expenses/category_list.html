@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}Expense Categories{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Expense Categories</h1>
+        <p class="page-subtitle">Configure operational categories for financial reports</p>
+    </div>
+    <a href="{% url 'expense_list' %}" class="btn btn-secondary">
+        <i class="fa-solid fa-arrow-left-long"></i> Back to Expenses
+    </a>
+</div>
+
+<div class="details-grid" style="grid-template-columns: 2fr 1fr; gap: 28px;">
+    <!-- Left Column: Categories List Table -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title">Available Categories</h2>
+        </div>
+        <div class="panel-body" style="padding: 0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">ID</th>
+                        <th>Category Name</th>
+                        <th style="text-align: right; width: 40%;">Assigned Expenses Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cat in categories %}
+                    <tr>
+                        <td>#{{ cat.id }}</td>
+                        <td style="font-weight: 600;">{{ cat.name }}</td>
+                        <td style="text-align: right; font-weight: 500;">
+                            <span class="badge" style="background-color: var(--primary-light); color: var(--primary-color);">
+                                {{ cat.expenses.count }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 24px; color: var(--text-muted);">
+                            No categories registered. Create one on the right to start.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Right Column: Add Category Form -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title">Add Category</h2>
+        </div>
+        <div class="panel-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label" for="{{ form.name.id_for_label }}">Category Name *</label>
+                    {{ form.name }}
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                        e.g., Rent, Electricity Bill, Salary, Internet, Coffee/Water, Marketing
+                    </div>
+                    {{ form.name.errors }}
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="fa-solid fa-plus"></i> Create Category
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

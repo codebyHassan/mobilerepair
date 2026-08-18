@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ title }}</h1>
+        <p class="page-subtitle">Configure technician details and status</p>
+    </div>
+    <a href="{% url 'technician_list' %}" class="btn btn-secondary">
+        <i class="fa-solid fa-arrow-left-long"></i> Back to Staff Registry
+    </a>
+</div>
+
+<div class="panel" style="max-width: 600px;">
+    <div class="panel-header">
+        <h2 class="panel-title">Technician Profile</h2>
+    </div>
+    <div class="panel-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label class="form-label" for="{{ form.name.id_for_label }}">Full Name *</label>
+                {{ form.name }}
+                {{ form.name.errors }}
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="{{ form.phone.id_for_label }}">Phone Number *</label>
+                {{ form.phone }}
+                {{ form.phone.errors }}
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="{{ form.specialization.id_for_label }}">Specialization</label>
+                {{ form.specialization }}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                    e.g. Micro-soldering, Screen replacement, iOS/Android software, etc.
+                </div>
+                {{ form.specialization.errors }}
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label class="form-label" for="{{ form.status.id_for_label }}">Employment / Active Status</label>
+                {{ form.status }}
+                {{ form.status.errors }}
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-check"></i> Save Technician Profile
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

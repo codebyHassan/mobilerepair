@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Customers{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Customers</h1>
+        <p class="page-subtitle">Manage customer profiles and devices</p>
+    </div>
+    <a href="{% url 'customer_create' %}" class="btn btn-primary">
+        <i class="fa-solid fa-user-plus"></i> Add Customer
+    </a>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Customer Registry</h2>
+        <form method="get" action="{% url 'customer_list' %}" style="display: flex; gap: 8px;">
+            <input type="text" name="q" value="{{ query }}" placeholder="Search name or phone..." class="form-control" style="width: 240px; padding: 6px 12px; font-size: 0.9rem;">
+            <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+            {% if query %}
+                <a href="{% url 'customer_list' %}" class="btn btn-danger btn-sm" title="Clear Search">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="panel-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Customer Name</th>
+                        <th>Phone</th>
+                        <th>Devices</th>
+                        <th>Repairs</th>
+                        <th>Total Spent</th>
+                        <th>Outstanding</th>
+                        <th>Last Visit</th>
+                        <th class="no-print" style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in customers %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'customer_detail' item.customer.id %}" style="font-weight: 600; color: var(--primary-color);">
+                                {{ item.customer.name }}
+                            </a>
+                        </td>
+                        <td>{{ item.customer.phone }}</td>
+                        <td>
+                            <span class="badge" style="background-color: var(--primary-light); color: var(--primary-color);">
+                                {{ item.devices_count }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge" style="background-color: #f1f5f9; color: var(--text-primary);">
+                                {{ item.repairs_count }}
+                            </span>
+                        </td>
+                        <td>Rs. {{ item.total_spent|floatformat:2 }}</td>
+                        <td>
+                            {% if item.outstanding > 0 %}
+                            <span style="color: #dc2626; font-weight: 600;">Rs. {{ item.outstanding|floatformat:2 }}</span>
+                            {% else %}
+                            <span style="color: #16a34a;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.last_visit|date:"M d, Y"|default:"Never" }}</td>
+                        <td class="no-print" style="text-align: right; white-space: nowrap;">
+                            <a href="{% url 'customer_detail' item.customer.id %}" class="btn btn-secondary btn-sm" title="View Customer Profile">
+                                <i class="fa-solid fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'customer_edit' item.customer.id %}" class="btn btn-secondary btn-sm" title="Edit Customer Details">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </a>
+                            <a href="{% url 'device_create' item.customer.id %}" class="btn btn-success btn-sm" title="Add Customer Device">
+                                <i class="fa-solid fa-mobile-screen"></i> +Device
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                            <i class="fa-solid fa-users" style="font-size: 2.5rem; margin-bottom: 12px; display: block; opacity: 0.5;"></i>
+                            No customers found. Click "Add Customer" to register one.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const custSearchInput = document.querySelector('input[name="q"]');
+        if (custSearchInput) {
+            custSearchInput.addEventListener('input', () => {
+                const val = custSearchInput.value.toLowerCase().trim();
+                const rows = document.querySelectorAll('.data-table tbody tr');
+                rows.forEach(row => {
+                    if (row.children.length > 1) {
+                        const text = row.innerText.toLowerCase();
+                        row.style.display = text.includes(val) ? '' : 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

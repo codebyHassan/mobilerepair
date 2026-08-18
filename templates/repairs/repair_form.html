@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ title }}</h1>
+        <p class="page-subtitle">Fill in diagnostics, priority, and intake checks</p>
+    </div>
+    <a href="{% url 'repair_intake' %}" class="btn btn-secondary">
+        <i class="fa-solid fa-arrow-left-long"></i> Change Selection
+    </a>
+</div>
+
+<div class="details-grid">
+    <!-- Left Column: Repair intake form fields -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title">Job Intake Details</h2>
+        </div>
+        <div class="panel-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.complaint.id_for_label }}">Customer Complaint *</label>
+                    {{ form.complaint }}
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                        State exactly what issue the customer is reporting (e.g. Screen broken, no power, battery draining, etc.)
+                    </div>
+                    {{ form.complaint.errors }}
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.priority.id_for_label }}">Priority Level *</label>
+                        {{ form.priority }}
+                        {{ form.priority.errors }}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.expected_delivery_date.id_for_label }}">Expected Delivery Date</label>
+                        {{ form.expected_delivery_date }}
+                        {{ form.expected_delivery_date.errors }}
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.assigned_technician.id_for_label }}">Assign Technician</label>
+                        {{ form.assigned_technician }}
+                        {{ form.assigned_technician.errors }}
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.physical_condition.id_for_label }}">Device Intake Condition Checklist/Notes</label>
+                    {{ form.physical_condition }}
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                        Defaults to current device specs. Modify if there are specific new scratches, dents, or signs of water entry.
+                    </div>
+                    {{ form.physical_condition.errors }}
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.accessories.id_for_label }}">Accessories Kept with Repair</label>
+                    {{ form.accessories }}
+                    {{ form.accessories.errors }}
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 28px;">
+                    <label class="form-label" for="{{ form.notes.id_for_label }}">Additional Remarks</label>
+                    {{ form.notes }}
+                    {{ form.notes.errors }}
+                </div>
+                
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-square-check"></i> Register Intake & Print Ticket
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Right Column: Pre-selected entity overview summaries -->
+    <div style="display: flex; flex-direction: column; gap: 28px;">
+        <!-- Selected Customer Card -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fa-solid fa-user" style="margin-right: 8px;"></i>Customer Selection</h2>
+            </div>
+            <div class="panel-body">
+                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 6px;">{{ customer.name }}</h3>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px;">Phone: {{ customer.phone }}</p>
+                <div style="font-size: 0.8rem; background-color: var(--background-color); padding: 8px 12px; border-radius: var(--radius-sm); color: var(--text-secondary);">
+                    Address: {{ customer.address|default:"None logged" }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Selected Device Card -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fa-solid fa-mobile" style="margin-right: 8px;"></i>Device Selection</h2>
+            </div>
+            <div class="panel-body">
+                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 6px;">{{ device.brand }} {{ device.model }}</h3>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 6px;">IMEI: {{ device.imei|default:"N/A" }}</p>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px;">Color: {{ device.color|default:"N/A" }} | Storage: {{ device.storage|default:"N/A" }}</p>
+                
+                <div style="border-top: 1px solid var(--border-color); padding-top: 12px; font-size: 0.85rem; color: var(--text-secondary);">
+                    <strong>Physical state:</strong>
+                    <div style="margin-top: 4px; font-style: italic;">{{ device.physical_condition|default:"No initial condition noted" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Autofill initial fields on intake form load from device condition
+    window.addEventListener('DOMContentLoaded', () => {
+        const condInput = document.getElementById('id_physical_condition');
+        const accInput = document.getElementById('id_accessories');
+        
+        if (condInput && condInput.value === '') {
+            condInput.value = "{{ device.physical_condition|escapejs }}";
+        }
+        if (accInput && accInput.value === '') {
+            accInput.value = "{{ device.accessories_received|escapejs }}";
+        }
+    });
+</script>
+{% endblock %}

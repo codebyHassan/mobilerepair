@@ -1,0 +1,376 @@
+{% extends 'base.html' %}
+
+{% block title %}Payments & Cash Flow Hub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><i class="fa-solid fa-money-bill-transfer" style="margin-right: 8px; color: var(--primary-color);"></i>Payments & Cash Flow Hub</h1>
+        <p class="page-subtitle">Unified registry for all money coming into the shop (Customer Invoices) and going out (Suppliers, Commissions, Expenses).</p>
+    </div>
+</div>
+
+<!-- Financial Summary Widgets -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <!-- 1. Money In -->
+    <div style="background-color: var(--card-background); border: 1px solid var(--border-color); border-left: 4px solid #16a34a; border-radius: var(--radius-md); padding: 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm);">
+        <div>
+            <div style="font-size: 0.75rem; color: #16a34a; text-transform: uppercase; font-weight: 700;">🟢 Total Cash In (Paisa Aya)</div>
+            <div style="font-size: 1.5rem; font-weight: 800; margin-top: 6px; color: #16a34a;">Rs. {{ total_inflow|floatformat:2 }}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">{{ payments.count }} Customer receipts</div>
+        </div>
+        <div style="width: 44px; height: 44px; border-radius: 50%; background-color: #dcfce7; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+            <i class="fa-solid fa-arrow-down-left"></i>
+        </div>
+    </div>
+    
+    <!-- 2. Money Out -->
+    <div style="background-color: var(--card-background); border: 1px solid var(--border-color); border-left: 4px solid #dc2626; border-radius: var(--radius-md); padding: 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm);">
+        <div>
+            <div style="font-size: 0.75rem; color: #dc2626; text-transform: uppercase; font-weight: 700;">🔴 Total Cash Out (Paisa Gaya)</div>
+            <div style="font-size: 1.5rem; font-weight: 800; margin-top: 6px; color: #dc2626;">Rs. {{ total_outflow|floatformat:2 }}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Suppliers, Techs & Expenses</div>
+        </div>
+        <div style="width: 44px; height: 44px; border-radius: 50%; background-color: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        </div>
+    </div>
+    
+    <!-- 3. Net Cash Flow -->
+    <div style="background-color: var(--card-background); border: 1px solid var(--border-color); border-left: 4px solid {% if net_cash_flow >= 0 %}#2563eb{% else %}#b91c1c{% endif %}; border-radius: var(--radius-md); padding: 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm);">
+        <div>
+            <div style="font-size: 0.75rem; color: {% if net_cash_flow >= 0 %}#2563eb{% else %}#b91c1c{% endif %}; text-transform: uppercase; font-weight: 700;">💼 Net Cash Drawer Balance</div>
+            <div style="font-size: 1.5rem; font-weight: 800; margin-top: 6px; color: {% if net_cash_flow >= 0 %}#2563eb{% else %}#b91c1c{% endif %};">
+                Rs. {{ net_cash_flow|floatformat:2 }}
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Cash In minus Cash Out</div>
+        </div>
+        <div style="width: 44px; height: 44px; border-radius: 50%; background-color: {% if net_cash_flow >= 0 %}#dbeafe{% else %}#fee2e2{% endif %}; color: {% if net_cash_flow >= 0 %}#2563eb{% else %}#b91c1c{% endif %}; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+            <i class="fa-solid fa-scale-balanced"></i>
+        </div>
+    </div>
+    
+    <!-- 4. Payment Channels Summary -->
+    <div style="background-color: var(--card-background); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px 18px; display: flex; flex-direction: column; justify-content: center; gap: 4px; box-shadow: var(--shadow-sm);">
+        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 2px;">Inflow Channels:</div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.82rem;">
+            <span><i class="fa-solid fa-money-bill-wave text-success"></i> Cash:</span>
+            <strong>Rs. {{ cash_sum|floatformat:0 }}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.82rem;">
+            <span><i class="fa-solid fa-building-columns text-primary"></i> Bank:</span>
+            <strong>Rs. {{ bank_sum|floatformat:0 }}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.82rem;">
+            <span><i class="fa-solid fa-mobile-screen" style="color: #22c55e;"></i> EP/JC:</span>
+            <strong>Rs. {{ ep_sum|add:jc_sum|floatformat:0 }}</strong>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Panel & Tabs -->
+<div class="panel" style="margin-bottom: 24px; overflow: visible;">
+    <div class="panel-body" style="padding: 14px 16px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; align-items: center;">
+        <!-- Tabs -->
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="?tab=all{% if filter_type %}&date_filter={{ filter_type }}{% endif %}{% if start_date %}&start_date={{ start_date }}&end_date={{ end_date }}{% endif %}" class="btn {% if active_tab == 'all' or not active_tab %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                <i class="fa-solid fa-list"></i> 1. All Cash Flow ({{ stream|length }})
+            </a>
+            <a href="?tab=inflow{% if filter_type %}&date_filter={{ filter_type }}{% endif %}{% if start_date %}&start_date={{ start_date }}&end_date={{ end_date }}{% endif %}" class="btn {% if active_tab == 'inflow' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                <i class="fa-solid fa-arrow-down-left text-success"></i> 2. 🟢 Money In ({{ payments.count }})
+            </a>
+            <a href="?tab=outflow{% if filter_type %}&date_filter={{ filter_type }}{% endif %}{% if start_date %}&start_date={{ start_date }}&end_date={{ end_date }}{% endif %}" class="btn {% if active_tab == 'outflow' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                <i class="fa-solid fa-arrow-up-right-from-square text-danger"></i> 3. 🔴 Money Out ({{ supplier_payments.count|add:paid_commissions.count|add:expenses.count }})
+            </a>
+        </div>
+
+        <!-- Date Filters -->
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Period:</span>
+            <a href="?tab={{ active_tab }}&date_filter=all" class="btn {% if filter_type == 'all' or not filter_type %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">All</a>
+            <a href="?tab={{ active_tab }}&date_filter=today" class="btn {% if filter_type == 'today' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">Today</a>
+            <a href="?tab={{ active_tab }}&date_filter=week" class="btn {% if filter_type == 'week' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">This Week</a>
+            <a href="?tab={{ active_tab }}&date_filter=month" class="btn {% if filter_type == 'month' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">This Month</a>
+            
+            <!-- Custom Range -->
+            <form method="get" action="{% url 'payment_list' %}" style="display: flex; align-items: center; gap: 6px;">
+                <input type="hidden" name="tab" value="{{ active_tab }}">
+                <input type="hidden" name="date_filter" value="custom">
+                <input type="date" name="start_date" value="{{ start_date }}" class="form-control" style="width: auto; padding: 3px 6px; font-size: 0.8rem;" required>
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">to</span>
+                <input type="date" name="end_date" value="{{ end_date }}" class="form-control" style="width: auto; padding: 3px 6px; font-size: 0.8rem;" required>
+                <button type="submit" class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 0.8rem;">Go</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if active_tab == 'all' or not active_tab %}
+<!-- TAB 1: ALL CASH FLOW (UNIFIED STREAM) -->
+<div class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title"><i class="fa-solid fa-list-check" style="margin-right: 8px; color: var(--primary-color);"></i>Chronological Cash Flow Ledger</h2>
+        <div style="display: flex; gap: 8px;">
+            <span class="badge" style="background-color: #dcfce7; color: #16a34a; font-size: 0.82rem; padding: 6px 10px;">In: Rs. {{ total_inflow|floatformat:2 }}</span>
+            <span class="badge" style="background-color: #fee2e2; color: #dc2626; font-size: 0.82rem; padding: 6px 10px;">Out: Rs. {{ total_outflow|floatformat:2 }}</span>
+        </div>
+    </div>
+    <div class="panel-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">Flow</th>
+                        <th>Ref #</th>
+                        <th>Party / Entity</th>
+                        <th>Description / Category</th>
+                        <th>Channel / Method</th>
+                        <th style="text-align: right;">Amount</th>
+                        <th>Date & Time</th>
+                        <th>Recorded By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in stream %}
+                    <tr>
+                        <td>
+                            {% if item.type == 'INFLOW' %}
+                            <span class="badge" style="{{ item.badge_style }} font-weight: 700; font-size: 0.75rem;">
+                                <i class="fa-solid fa-arrow-down-left"></i> INFLOW
+                            </span>
+                            {% else %}
+                            <span class="badge" style="{{ item.badge_style }} font-weight: 700; font-size: 0.75rem;">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> OUTFLOW
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td style="font-weight: 600; font-size: 0.82rem;">{{ item.ref }}</td>
+                        <td>
+                            <a href="{{ item.link_url }}" style="font-weight: 600; color: var(--text-primary);">
+                                {{ item.title }}
+                            </a>
+                        </td>
+                        <td>
+                            <div style="font-size: 0.82rem; color: var(--text-secondary);">{{ item.category }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ item.subtitle }}</div>
+                        </td>
+                        <td><span style="font-size: 0.82rem;">{{ item.method }}</span></td>
+                        <td style="text-align: right; font-weight: 700; font-size: 0.92rem; color: {{ item.color }};">
+                            {% if item.type == 'INFLOW' %}+{% else %}-{% endif %} Rs. {{ item.amount|floatformat:2 }}
+                        </td>
+                        <td style="font-size: 0.82rem; color: var(--text-secondary);">{{ item.timestamp|date:"M d, Y, h:i A" }}</td>
+                        <td style="font-size: 0.82rem;">{{ item.recorded_by }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                            No transactions recorded within the selected period.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% elif active_tab == 'inflow' %}
+<!-- TAB 2: MONEY IN (CUSTOMER INVOICES) -->
+<div class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title"><i class="fa-solid fa-arrow-down-left" style="margin-right: 8px; color: #16a34a;"></i>Customer Invoice Receipts (Money In)</h2>
+        <span class="badge" style="background-color: #dcfce7; color: #16a34a; font-size: 0.85rem; padding: 6px 12px;">
+            Total Collected: Rs. {{ total_inflow|floatformat:2 }}
+        </span>
+    </div>
+    <div class="panel-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Receipt Ref #</th>
+                        <th>Customer</th>
+                        <th>Job Number</th>
+                        <th>Invoice Ref</th>
+                        <th style="text-align: right;">Billed Amount</th>
+                        <th>Payment Method</th>
+                        <th>Received Date & Time</th>
+                        <th>Received By</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in payments %}
+                    <tr>
+                        <td style="font-weight: 600;">PAY-{{ p.id|stringformat:"05d" }}</td>
+                        <td>
+                            <a href="{% url 'customer_detail' p.invoice.repair_job.customer.id %}" style="font-weight: 600; color: var(--primary-color);">
+                                {{ p.invoice.repair_job.customer.name }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{% url 'repair_detail' p.invoice.repair_job.id %}" style="font-weight: 500; color: var(--text-primary);">
+                                {{ p.invoice.repair_job.job_number }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{% url 'invoice_detail' p.invoice.id %}" style="color: var(--text-secondary); text-decoration: underline;">
+                                {{ p.invoice.invoice_number }}
+                            </a>
+                        </td>
+                        <td style="text-align: right; font-weight: 700; color: #16a34a;">Rs. {{ p.amount|floatformat:2 }}</td>
+                        <td><span style="text-transform: capitalize;">{{ p.get_payment_method_display }}</span></td>
+                        <td style="font-size: 0.85rem;">{{ p.created_at|date:"M d, Y, h:i A" }}</td>
+                        <td>{{ p.received_by.username|default:"System" }}</td>
+                        <td style="color: var(--text-secondary); font-size: 0.85rem;">{{ p.notes|default:"—" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                            No customer receipts recorded within the selected filter criteria.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% elif active_tab == 'outflow' %}
+<!-- TAB 3: MONEY OUT (SUPPLIERS, COMMISSIONS, EXPENSES) -->
+<div style="display: flex; flex-direction: column; gap: 24px;">
+    <!-- 1. Supplier Payments -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title"><i class="fa-solid fa-truck-field" style="margin-right: 8px; color: #dc2626;"></i>1. Market Supplier Udhar Payments (Paid to Vendors)</h2>
+            <span class="badge" style="background-color: #fee2e2; color: #dc2626; font-size: 0.82rem; padding: 4px 10px;">
+                Total: Rs. {{ total_supplier_paid|floatformat:2 }}
+            </span>
+        </div>
+        <div class="panel-body" style="padding: 0;">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Supplier</th>
+                            <th>Amount Paid</th>
+                            <th>Method</th>
+                            <th>Paid Date & Time</th>
+                            <th>Recorded By</th>
+                            <th>Note / Ref</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sp in supplier_payments %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'supplier_detail' sp.supplier.id %}" style="font-weight: 600; color: var(--primary-color);">
+                                    {{ sp.supplier.name }}
+                                </a>
+                            </td>
+                            <td style="font-weight: 700; color: #dc2626;">Rs. {{ sp.amount|floatformat:2 }}</td>
+                            <td>{{ sp.get_payment_method_display }}</td>
+                            <td style="font-size: 0.85rem;">{{ sp.created_at|date:"M d, Y, h:i A" }}</td>
+                            <td>{{ sp.paid_by.username|default:"System" }}</td>
+                            <td style="color: var(--text-secondary); font-size: 0.85rem;">{{ sp.notes|default:"—" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">No vendor payments logged in this period.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Technician Commissions Paid Out -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title"><i class="fa-solid fa-user-gear" style="margin-right: 8px; color: #ea580c;"></i>2. Technician Commission Payouts (Cleared)</h2>
+            <span class="badge" style="background-color: #ffedd5; color: #ea580c; font-size: 0.82rem; padding: 4px 10px;">
+                Total: Rs. {{ total_commissions_paid|floatformat:2 }}
+            </span>
+        </div>
+        <div class="panel-body" style="padding: 0;">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Technician</th>
+                            <th>Repair Job #</th>
+                            <th>Customer & Device</th>
+                            <th>Commission Amount</th>
+                            <th>Date Cleared</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in paid_commissions %}
+                        <tr>
+                            <td style="font-weight: 600;">{{ c.technician.name }}</td>
+                            <td>
+                                <a href="{% url 'repair_detail' c.repair_job.id %}" style="font-weight: 500; color: #2563eb;">
+                                    {{ c.repair_job.job_number }}
+                                </a>
+                            </td>
+                            <td>{{ c.repair_job.customer.name }} ({{ c.repair_job.device.brand }} {{ c.repair_job.device.model }})</td>
+                            <td style="font-weight: 700; color: #ea580c;">Rs. {{ c.commission_amount|floatformat:2 }}</td>
+                            <td style="font-size: 0.85rem;">{{ c.created_at|date:"M d, Y, h:i A" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">No commission payouts logged in this period.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Operational Expenses -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title"><i class="fa-solid fa-receipt" style="margin-right: 8px; color: #b91c1c;"></i>3. Shop Operational Expenses</h2>
+            <span class="badge" style="background-color: #fef2f2; color: #b91c1c; font-size: 0.82rem; padding: 4px 10px;">
+                Total: Rs. {{ total_expenses_paid|floatformat:2 }}
+            </span>
+        </div>
+        <div class="panel-body" style="padding: 0;">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th>Date</th>
+                            <th>Payment Method</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ex in expenses %}
+                        <tr>
+                            <td style="font-weight: 600;">{{ ex.category.name }}</td>
+                            <td style="color: var(--text-secondary); font-size: 0.85rem;">{{ ex.description|default:"—" }}</td>
+                            <td>{{ ex.date|date:"M d, Y" }}</td>
+                            <td><span style="text-transform: capitalize;">{{ ex.payment_method }}</span></td>
+                            <td style="text-align: right; font-weight: 700; color: #b91c1c;">Rs. {{ ex.amount|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">No shop expenses recorded in this period.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+

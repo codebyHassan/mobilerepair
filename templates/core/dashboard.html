@@ -1,0 +1,462 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Welcome back, {{ request.user.username|capfirst }}</h1>
+        <p class="page-subtitle">Here is what's happening at {{ settings.shop_name }} today</p>
+    </div>
+    <div style="display: flex; gap: 12px;">
+        <a href="{% url 'repair_intake' %}" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i> New Repair Intake
+        </a>
+    </div>
+</div>
+
+<!-- Stats Dashboard Cards Row -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Active Repair Jobs</div>
+            <div class="stat-value">{{ pending_repairs }}</div>
+            <div class="stat-desc" style="color: var(--text-muted);">Currently in queue</div>
+        </div>
+        <div class="stat-icon" style="background-color: var(--primary-light); color: var(--primary-color);">
+            <i class="fa-solid fa-screwdriver-wrench"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Ready for Pickup</div>
+            <div class="stat-value">{{ ready_for_pickup }}</div>
+            <div class="stat-desc" style="color: #16a34a; font-weight: 500;">Waiting for customer</div>
+        </div>
+        <div class="stat-icon" style="background-color: #dcfce7; color: #16a34a;">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+    </div>
+    
+    {% if user.is_superuser or perms.billing.view_payment %}
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Today's Revenue</div>
+            <div class="stat-value">Rs. {{ today_payments|floatformat:2 }}</div>
+            <div class="stat-desc" style="color: var(--text-muted);">From payments received</div>
+        </div>
+        <div class="stat-icon" style="background-color: #e0f2fe; color: #0284c7;">
+            <i class="fa-solid fa-hand-holding-dollar"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Outstanding Payments</div>
+            <div class="stat-value" style="color: #dc2626;">Rs. {{ total_outstanding|floatformat:2 }}</div>
+            <div class="stat-desc" style="color: var(--text-muted);">Unpaid invoice balances</div>
+        </div>
+        <div class="stat-icon" style="background-color: #fee2e2; color: #dc2626;">
+            <i class="fa-solid fa-clock"></i>
+        </div>
+    </div>
+    {% else %}
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">In Progress & Diagnosing</div>
+            <div class="stat-value" style="color: #0284c7;">{{ in_progress_count }}</div>
+            <div class="stat-desc" style="color: var(--text-muted);">Tasks being worked on</div>
+        </div>
+        <div class="stat-icon" style="background-color: #e0f2fe; color: #0284c7;">
+            <i class="fa-solid fa-gears"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Delivered Today</div>
+            <div class="stat-value" style="color: #059669;">{{ completed_today }}</div>
+            <div class="stat-desc" style="color: var(--text-muted);">Repairs completed today</div>
+        </div>
+        <div class="stat-icon" style="background-color: #ecfdf5; color: #059669;">
+            <i class="fa-solid fa-truck-ramp-box"></i>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Charts Section -->
+<div class="details-grid" style="margin-bottom: 32px; grid-template-columns: {% if user.is_superuser or perms.billing.view_payment %}1fr 1fr{% else %}1fr{% endif %};">
+    {% if user.is_superuser or perms.billing.view_payment %}
+    <!-- Line Chart: 7 Day Revenue -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title"><i class="fa-solid fa-chart-line" style="margin-right: 8px;"></i>Revenue & Payments Trend</h2>
+        </div>
+        <div class="panel-body">
+            <div style="position: relative; height: 280px; width: 100%;">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Doughnut Chart: Status Ratio -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title"><i class="fa-solid fa-chart-pie" style="margin-right: 8px;"></i>Repair Status Ratios</h2>
+        </div>
+        <div class="panel-body">
+            <div style="position: relative; height: 280px; width: 100%;">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="details-grid">
+    <!-- Left Panel: Recent Intake Jobs -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title"><i class="fa-solid fa-circle-notch" style="margin-right: 8px;"></i>Recent Repair Intakes</h2>
+            <a href="{% url 'repair_list' %}" class="btn btn-secondary btn-sm">View All</a>
+        </div>
+        <div class="panel-body" style="padding: 0;">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Job #</th>
+                            <th>Customer</th>
+                            <th>Device</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for job in recent_jobs %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'repair_detail' job.id %}" style="font-weight: 700; color: var(--primary-color);">
+                                    {{ job.job_number }}
+                                </a>
+                            </td>
+                            <td>{{ job.customer.name }}</td>
+                            <td>{{ job.device.brand }} {{ job.device.model }}</td>
+                            <td>
+                                <span class="badge badge-{{ job.status|lower }}">
+                                    {{ job.get_status_display }}
+                                </span>
+                            </td>
+                            <td style="font-size: 0.8rem; color: var(--text-muted);">{{ job.received_date|date:"M d, h:i A" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 24px; color: var(--text-muted);">
+                                No repairs logged in queue.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Panel: Low Stock Alert Warnings -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title">
+                <i class="fa-solid fa-triangle-exclamation" style="color: #ea580c; margin-right: 8px;"></i>
+                Low Stock Alert ({{ low_stock_count }})
+            </h2>
+            <a href="{% url 'part_list' %}" class="btn btn-secondary btn-sm">Catalog</a>
+        </div>
+        <div class="panel-body" style="padding: 0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Part SKU</th>
+                        <th>Qty</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in low_stock_items %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'part_detail' item.id %}" style="font-weight: 600;">{{ item.name }}</a>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">SKU: {{ item.sku }}</div>
+                        </td>
+                        <td>
+                            <strong style="color: #ea580c;">{{ item.current_stock }}</strong> / min {{ item.minimum_stock }}
+                        </td>
+                        <td>
+                            {% if item.current_stock == 0 %}
+                                <span class="badge" style="background-color: #fee2e2; color: #dc2626;">Out</span>
+                            {% else %}
+                                <span class="badge" style="background-color: #ffedd5; color: #ea580c;">Low</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 24px; color: #16a34a; font-weight: 500;">
+                            <i class="fa-solid fa-circle-check" style="font-size: 1.5rem; margin-bottom: 6px; display: block;"></i>
+                            All inventory items are adequately stocked!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if user.is_superuser or perms.repairs.view_techniciancommissionrecord %}
+<!-- ═══════════════════════════════════════════════════════════════════
+     SHOP PAYABLES SECTION — Amounts owed by the Shop Owner
+     ═══════════════════════════════════════════════════════════════════ -->
+<div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 4px; height: 28px; background: linear-gradient(180deg, #dc2626, #7c3aed); border-radius: 4px;"></div>
+        <div>
+            <h2 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin: 0;">💸 Shop Payables</h2>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0;">Amounts the shop OWES — commissions &amp; supplier Udhar</p>
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 6px 14px; text-align: center;">
+            <div style="font-size: 0.7rem; color: #991b1b; text-transform: uppercase; letter-spacing: 0.05em;">Total Commission Due</div>
+            <div style="font-size: 1.1rem; font-weight: 800; color: #dc2626;">Rs. {{ total_unpaid_commission|floatformat:2 }}</div>
+        </div>
+        <div style="background: #fef9c3; border: 1px solid #fde68a; border-radius: 10px; padding: 6px 14px; text-align: center;">
+            <div style="font-size: 0.7rem; color: #92400e; text-transform: uppercase; letter-spacing: 0.05em;">Total Supplier Udhar</div>
+            <div style="font-size: 1.1rem; font-weight: 800; color: #b45309;">Rs. {{ total_supplier_due|floatformat:2 }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="details-grid" style="margin-bottom: 32px; grid-template-columns: 1fr 1fr;">
+
+    <!-- ── PANEL 1: UNPAID TECHNICIAN COMMISSIONS ─────────────────── -->
+    <div class="panel" style="border-top: 3px solid #7c3aed;">
+        <div class="panel-header">
+            <h2 class="panel-title">
+                <i class="fa-solid fa-user-tie" style="color: #7c3aed; margin-right: 8px;"></i>
+                Technician Commissions
+                {% if unpaid_commissions %}
+                <span style="background:#ede9fe; color:#7c3aed; font-size:0.7rem; padding:2px 8px; border-radius:20px; font-weight:700; margin-left:6px;">
+                    {{ unpaid_commissions|length }} Unpaid
+                </span>
+                {% endif %}
+            </h2>
+            <a href="{% url 'technician_commissions' %}" class="btn btn-secondary btn-sm">View All</a>
+        </div>
+        <div class="panel-body" style="padding: 0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Technician</th>
+                        <th>Job</th>
+                        <th>Commission</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for comm in unpaid_commissions %}
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600; color: var(--text-primary);">{{ comm.technician.name }}</div>
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">{{ comm.commission_type|capfirst }} — {{ comm.commission_rate }}%</div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600; font-size: 0.82rem;">{{ comm.repair_job.job_number }}</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted);">{{ comm.repair_job.customer.name }}</div>
+                        </td>
+                        <td>
+                            <strong style="color: #7c3aed; font-size: 0.95rem;">Rs. {{ comm.commission_amount|floatformat:2 }}</strong>
+                            <div style="font-size: 0.7rem; color: var(--text-muted);">of Rs. {{ comm.gross_profit|floatformat:0 }} profit</div>
+                        </td>
+                        <td>
+                            <a href="{% url 'repair_lifecycle_stage' comm.repair_job.id 'COMMISSION_CALCULATION' %}"
+                               class="btn btn-sm"
+                               style="background: linear-gradient(135deg, #7c3aed, #6d28d9); color:#fff; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;">
+                               <i class="fa-solid fa-arrow-right me-1"></i> Pay Now
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="text-align:center; padding: 28px; color: #16a34a; font-weight: 500;">
+                            <i class="fa-solid fa-circle-check" style="font-size: 1.8rem; display:block; margin-bottom: 6px;"></i>
+                            All technician commissions are paid! 🎉
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── PANEL 2: SUPPLIER UDHAR (CREDIT BALANCE) ───────────────── -->
+    <div class="panel" style="border-top: 3px solid #d97706;">
+        <div class="panel-header">
+            <h2 class="panel-title">
+                <i class="fa-solid fa-shop" style="color: #d97706; margin-right: 8px;"></i>
+                Supplier Udhar (Credit Due)
+                {% if suppliers_with_due %}
+                <span style="background:#fef9c3; color:#92400e; font-size:0.7rem; padding:2px 8px; border-radius:20px; font-weight:700; margin-left:6px;">
+                    {{ suppliers_with_due|length }} Suppliers
+                </span>
+                {% endif %}
+            </h2>
+            <a href="{% url 'supplier_list' %}" class="btn btn-secondary btn-sm">View All</a>
+        </div>
+        <div class="panel-body" style="padding: 0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Supplier</th>
+                        <th>Contact</th>
+                        <th>Balance Due</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for supplier in suppliers_with_due %}
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600; color: var(--text-primary);">{{ supplier.name }}</div>
+                        </td>
+                        <td>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">{{ supplier.phone|default:"—" }}</div>
+                        </td>
+                        <td>
+                            <strong style="color: #dc2626; font-size: 0.95rem;">Rs. {{ supplier.due_balance|floatformat:2 }}</strong>
+                        </td>
+                        <td style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                            <a href="{% url 'supplier_detail' supplier.id %}"
+                               class="btn btn-sm"
+                               style="background: linear-gradient(135deg, #d97706, #b45309); color:#fff; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;">
+                               <i class="fa-solid fa-eye me-1"></i> View
+                            </a>
+                            <a href="{% url 'supplier_payment_create' supplier.id %}"
+                               class="btn btn-sm"
+                               style="background: linear-gradient(135deg, #16a34a, #15803d); color:#fff; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;">
+                               <i class="fa-solid fa-money-bill me-1"></i> Pay
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="text-align:center; padding: 28px; color: #16a34a; font-weight: 500;">
+                            <i class="fa-solid fa-circle-check" style="font-size: 1.8rem; display:block; margin-bottom: 6px;"></i>
+                            No supplier credit balances! All cleared. ✅
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- ChartJS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Line chart data loading
+        const revElem = document.getElementById('revenueChart');
+        if (revElem) {
+            const ctxRev = revElem.getContext('2d');
+            
+            // Fetch financial trends over last 7 days from API view
+            fetch('{% url "reports_data_api" %}?type=trend')
+                .then(res => res.json())
+                .then(data => {
+                new Chart(ctxRev, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [
+                            {
+                                label: 'Payments Received (Rs.)',
+                                data: data.payments,
+                                borderColor: '#4f46e5',
+                                backgroundColor: 'rgba(79, 70, 229, 0.08)',
+                                fill: true,
+                                tension: 0.4,
+                                borderWidth: 3
+                            },
+                            {
+                                label: 'Expenses (Rs.)',
+                                data: data.expenses,
+                                borderColor: '#dc2626',
+                                backgroundColor: 'transparent',
+                                fill: false,
+                                tension: 0.4,
+                                borderWidth: 2,
+                                borderDash: [5, 5]
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top' }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+            })
+            .catch(err => console.error("Error drawing trend chart:", err));
+        }
+            
+        // Doughnut chart loading
+        const ctxStat = document.getElementById('statusChart').getContext('2d');
+        fetch('{% url "reports_data_api" %}?type=status')
+            .then(res => res.json())
+            .then(data => {
+                new Chart(ctxStat, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            data: data.values,
+                            backgroundColor: [
+                                '#94a3b8', // Received
+                                '#fbbf24', // Diagnosing
+                                '#f97316', // Waiting Approval
+                                '#3b82f6', // Approved
+                                '#a855f7', // Waiting Parts
+                                '#0ea5e9', // Repairing
+                                '#e879f9', // QC
+                                '#10b981', // Ready
+                                '#059669', // Delivered
+                                '#ef4444'  // Cancelled
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right' }
+                        }
+                    }
+                });
+            })
+            .catch(err => console.error("Error drawing status ratios:", err));
+    });
+</script>
+{% endblock %}

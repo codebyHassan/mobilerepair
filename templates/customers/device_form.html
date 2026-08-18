@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ title }}</h1>
+        <p class="page-subtitle">Add or edit device details for <strong>{{ customer.name }}</strong></p>
+    </div>
+    <a href="{% url 'customer_detail' customer.id %}" class="btn btn-secondary">
+        <i class="fa-solid fa-arrow-left-long"></i> Back to Customer Profile
+    </a>
+</div>
+
+<div class="panel" style="max-width: 800px;">
+    <div class="panel-header">
+        <h2 class="panel-title">Device Specification & Condition</h2>
+    </div>
+    <div class="panel-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.brand.id_for_label }}">Brand / Manufacturer *</label>
+                    {{ form.brand }}
+                    {{ form.brand.errors }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.model.id_for_label }}">Model Name *</label>
+                    {{ form.model }}
+                    {{ form.model.errors }}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.imei.id_for_label }}">IMEI Number</label>
+                    {{ form.imei }}
+                    {{ form.imei.errors }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.serial_number.id_for_label }}">Serial Number (S/N)</label>
+                    {{ form.serial_number }}
+                    {{ form.serial_number.errors }}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.color.id_for_label }}">Color</label>
+                    {{ form.color }}
+                    {{ form.color.errors }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.storage.id_for_label }}">Storage Size</label>
+                    {{ form.storage }}
+                    {{ form.storage.errors }}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.network_info.id_for_label }}">Network Operator / SIM Info</label>
+                    {{ form.network_info }}
+                    {{ form.network_info.errors }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.device_password.id_for_label }}">Lock Screen Pattern / PIN / Pass</label>
+                    {{ form.device_password }}
+                    {{ form.device_password.errors }}
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="{{ form.physical_condition.id_for_label }}">Physical Condition</label>
+                {{ form.physical_condition }}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                    Describe any damage: screen cracks, body scuffs, camera lens damage, fluid exposure, etc.
+                </div>
+                {{ form.physical_condition.errors }}
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="{{ form.accessories_received.id_for_label }}">Accessories Received</label>
+                {{ form.accessories_received }}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                    List items kept by the shop: e.g., SIM Tray, SD Card, Charger, Phone Case, original box.
+                </div>
+                {{ form.accessories_received.errors }}
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 28px;">
+                <label class="form-label" for="{{ form.notes.id_for_label }}">Technical / Diagnostic Notes</label>
+                {{ form.notes }}
+                {{ form.notes.errors }}
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                {% if 'new' in request.path %}
+                <button type="submit" name="save_add_job" class="btn btn-success">
+                    <i class="fa-solid fa-screwdriver-wrench"></i> Save & Open Repair Job
+                </button>
+                {% endif %}
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-check"></i> Save Device
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

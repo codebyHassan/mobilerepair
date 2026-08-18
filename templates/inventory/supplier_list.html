@@ -1,0 +1,298 @@
+{% extends 'base.html' %}
+
+{% block title %}Suppliers & Liabilities (Udhar Hub){% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><i class="fa-solid fa-hand-holding-dollar" style="margin-right: 8px; color: var(--primary-color);"></i>Suppliers & Payables (Udhar Hub)</h1>
+        <p class="page-subtitle">Track market vendor udhar, technician unpaid commissions, and total shop liabilities.</p>
+    </div>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <a href="{% url 'part_list' %}" class="btn btn-secondary">
+            <i class="fa-solid fa-boxes-stacked"></i> Parts Stock
+        </a>
+        <a href="{% url 'supplier_create' %}" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i> Add New Supplier
+        </a>
+    </div>
+</div>
+
+<!-- Financial Liabilities KPI Grid -->
+<div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <!-- 1. Supplier Udhar -->
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Market Suppliers Udhar</div>
+            <div class="stat-value" style="color: #dc2626;">Rs. {{ total_due_all|floatformat:2 }}</div>
+            <div class="stat-desc" style="color: #dc2626;"><i class="fa-solid fa-store"></i> {{ suppliers.count }} Market dealer accounts</div>
+        </div>
+        <div class="stat-icon" style="background-color: #fee2e2; color: #dc2626;">
+            <i class="fa-solid fa-truck-field"></i>
+        </div>
+    </div>
+    
+    <!-- 2. Technician Unpaid Commissions -->
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Technician Unpaid Commissions</div>
+            <div class="stat-value" style="color: #ea580c;">Rs. {{ total_tech_unpaid|floatformat:2 }}</div>
+            <div class="stat-desc" style="color: #ea580c;"><i class="fa-solid fa-user-gear"></i> {{ unpaid_commissions.count }} Pending repair job payouts</div>
+        </div>
+        <div class="stat-icon" style="background-color: #ffedd5; color: #ea580c;">
+            <i class="fa-solid fa-hand-holding-dollar"></i>
+        </div>
+    </div>
+    
+    <!-- 3. Combined Total Payables (Total Dena) -->
+    <div class="stat-card" style="border-left: 4px solid #b91c1c;">
+        <div>
+            <div class="stat-title">Total Shop Payables (Total Dena)</div>
+            <div class="stat-value" style="color: #b91c1c; font-weight: 800;">Rs. {{ total_overall_payables|floatformat:2 }}</div>
+            <div class="stat-desc" style="color: #b91c1c;"><i class="fa-solid fa-circle-exclamation"></i> Combined (Suppliers + Technicians)</div>
+        </div>
+        <div class="stat-icon" style="background-color: #fef2f2; color: #b91c1c;">
+            <i class="fa-solid fa-scale-unbalanced-flip"></i>
+        </div>
+    </div>
+
+    <!-- 4. Customer Receivables (Total Lene) -->
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Customer Receivables (Lene Hain)</div>
+            <div class="stat-value" style="color: #16a34a;">Rs. {{ total_customer_receivables|floatformat:2 }}</div>
+            <div class="stat-desc" style="color: #16a34a;"><i class="fa-solid fa-arrow-trend-up"></i> Outstanding customer invoices</div>
+        </div>
+        <div class="stat-icon" style="background-color: #dcfce7; color: #16a34a;">
+            <i class="fa-solid fa-wallet"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Interactive Tabs Container -->
+<div class="panel" style="margin-bottom: 24px;">
+    <div class="panel-body" style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); background: var(--background-color);">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <a href="?tab=suppliers{% if query %}&q={{ query }}{% endif %}" class="btn {% if active_tab == 'suppliers' or not active_tab %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                    <i class="fa-solid fa-store"></i> 1. Market Suppliers Udhar ({{ suppliers.count }})
+                </a>
+                <a href="?tab=technicians{% if query %}&q={{ query }}{% endif %}" class="btn {% if active_tab == 'technicians' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                    <i class="fa-solid fa-user-gear"></i> 2. Technician Commissions Due ({{ unpaid_commissions.count }})
+                </a>
+                <a href="?tab=summary{% if query %}&q={{ query }}{% endif %}" class="btn {% if active_tab == 'summary' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                    <i class="fa-solid fa-chart-pie"></i> 3. Liabilities Overview
+                </a>
+            </div>
+
+            {% if active_tab == 'suppliers' or not active_tab %}
+            <form method="get" style="display: flex; gap: 6px;">
+                <input type="hidden" name="tab" value="suppliers">
+                <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search supplier or phone..." style="width: 220px; padding: 6px 12px; font-size: 0.85rem;">
+                <button type="submit" class="btn btn-secondary btn-sm"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if active_tab == 'suppliers' or not active_tab %}
+<!-- TAB 1: SUPPLIER UDHAR DIRECTORY -->
+<div class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title"><i class="fa-solid fa-store" style="margin-right: 8px; color: var(--primary-color);"></i>Market Suppliers Udhar Khata</h2>
+        <span class="badge" style="background-color: #fee2e2; color: #dc2626; font-size: 0.85rem; padding: 6px 12px;">
+            Total Udhar Due: Rs. {{ total_due_all|floatformat:2 }}
+        </span>
+    </div>
+    <div class="panel-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Supplier / Vendor</th>
+                        <th>Contact / Phone</th>
+                        <th>Address / Market</th>
+                        <th style="text-align: right;">Total Sourced (Credit)</th>
+                        <th style="text-align: right;">Total Paid</th>
+                        <th style="text-align: right;">Current Udhar Balance</th>
+                        <th style="text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in suppliers %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'supplier_detail' s.id %}" style="font-weight: 600; color: var(--primary-color);">
+                                <i class="fa-solid fa-store" style="margin-right: 6px;"></i> {{ s.name }}
+                            </a>
+                        </td>
+                        <td>
+                            <div><i class="fa-solid fa-phone" style="font-size: 0.8rem; color: var(--text-muted);"></i> {{ s.phone|default:"N/A" }}</div>
+                            {% if s.whatsapp %}
+                            <div style="font-size: 0.8rem; color: #25d366;"><i class="fa-brands fa-whatsapp"></i> {{ s.whatsapp }}</div>
+                            {% endif %}
+                        </td>
+                        <td>{{ s.address|default:"N/A" }}</td>
+                        <td style="text-align: right; font-weight: 600;">Rs. {{ s.total_purchases_value|floatformat:2 }}</td>
+                        <td style="text-align: right; color: #16a34a; font-weight: 600;">Rs. {{ s.total_paid|floatformat:2 }}</td>
+                        <td style="text-align: right;">
+                            {% if s.due_balance > 0 %}
+                            <span class="badge" style="background-color: #fee2e2; color: #dc2626; font-size: 0.85rem; padding: 6px 10px;">
+                                Rs. {{ s.due_balance|floatformat:2 }} DUE
+                            </span>
+                            {% else %}
+                            <span class="badge" style="background-color: #dcfce7; color: #16a34a; font-size: 0.85rem; padding: 6px 10px;">
+                                CLEARED (Rs. 0.00)
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <a href="{% url 'supplier_detail' s.id %}" class="btn btn-sm btn-secondary">
+                                <i class="fa-solid fa-eye"></i> View Khata
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                            No suppliers registered yet. Click <strong>Add New Supplier</strong> to create your first vendor khata.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% elif active_tab == 'technicians' %}
+<!-- TAB 2: TECHNICIAN UNPAID COMMISSIONS -->
+<div class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title"><i class="fa-solid fa-user-gear" style="margin-right: 8px; color: #ea580c;"></i>Technician Unpaid Commissions (Staff Liabilities)</h2>
+        <div style="display: flex; gap: 8px;">
+            <span class="badge" style="background-color: #ffedd5; color: #ea580c; font-size: 0.85rem; padding: 6px 12px;">
+                Pending Payout: Rs. {{ total_tech_unpaid|floatformat:2 }}
+            </span>
+            <span class="badge" style="background-color: #dcfce7; color: #16a34a; font-size: 0.85rem; padding: 6px 12px;">
+                Total Paid Out: Rs. {{ total_tech_paid|floatformat:2 }}
+            </span>
+        </div>
+    </div>
+    <div class="panel-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Job Number</th>
+                        <th>Technician</th>
+                        <th>Customer & Device</th>
+                        <th style="text-align: right;">Billed Revenue</th>
+                        <th style="text-align: right;">Parts Cost</th>
+                        <th style="text-align: right;">Gross Profit</th>
+                        <th style="text-align: right;">Commission Due</th>
+                        <th style="text-align: center;">Status</th>
+                        <th style="text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for comm in unpaid_commissions %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'repair_detail' comm.repair_job.id %}" style="font-weight: 600; color: var(--primary-color);">
+                                {{ comm.repair_job.job_number }}
+                            </a>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600; color: var(--text-primary);">{{ comm.technician.name }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);"><i class="fa-solid fa-phone"></i> {{ comm.technician.phone }}</div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 500;">{{ comm.repair_job.customer.name }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">{{ comm.repair_job.device.brand }} {{ comm.repair_job.device.model }}</div>
+                        </td>
+                        <td style="text-align: right;">Rs. {{ comm.total_job_revenue|floatformat:2 }}</td>
+                        <td style="text-align: right; color: var(--text-muted);">Rs. {{ comm.total_parts_cost|floatformat:2 }}</td>
+                        <td style="text-align: right; font-weight: 600; color: #16a34a;">Rs. {{ comm.gross_profit|floatformat:2 }}</td>
+                        <td style="text-align: right; font-weight: 700; font-size: 0.95rem; color: #dc2626;">
+                            Rs. {{ comm.commission_amount|floatformat:2 }}
+                        </td>
+                        <td style="text-align: center;">
+                            <span class="badge" style="background-color: #fee2e2; color: #dc2626;">UNPAID</span>
+                        </td>
+                        <td style="text-align: right;">
+                            <form method="post" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="toggle_commission">
+                                <input type="hidden" name="commission_id" value="{{ comm.id }}">
+                                <button type="submit" class="btn btn-sm btn-success" style="padding: 4px 10px; font-size: 0.8rem;">
+                                    <i class="fa-solid fa-check"></i> Mark as Paid
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                            <i class="fa-solid fa-circle-check" style="font-size: 2rem; color: #16a34a; display: block; margin-bottom: 8px;"></i>
+                            All technician commissions are cleared! No pending commission payouts.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% elif active_tab == 'summary' %}
+<!-- TAB 3: LIABILITIES & PAYABLES OVERVIEW -->
+<div class="details-grid">
+    <div class="panel" style="background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); color: #ffffff;">
+        <div class="panel-body" style="padding: 28px;">
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: rgba(255,255,255,0.9); margin-bottom: 8px;">
+                <i class="fa-solid fa-scale-unbalanced-flip" style="margin-right: 8px; color: #f87171;"></i>Total Shop Liabilities (Hum Ne Dene Hain)
+            </h3>
+            <div style="font-size: 2.5rem; font-weight: 800; color: #fca5a5; margin: 16px 0;">
+                Rs. {{ total_overall_payables|floatformat:2 }}
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: rgba(255,255,255,0.7);"><i class="fa-solid fa-store" style="margin-right: 6px;"></i>Market Suppliers Udhar:</span>
+                    <strong style="color: #fca5a5; font-size: 1.1rem;">Rs. {{ total_due_all|floatformat:2 }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: rgba(255,255,255,0.7);"><i class="fa-solid fa-user-gear" style="margin-right: 6px;"></i>Technician Commissions Unpaid:</span>
+                    <strong style="color: #fdba74; font-size: 1.1rem;">Rs. {{ total_tech_unpaid|floatformat:2 }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title"><i class="fa-solid fa-arrow-trend-up" style="margin-right: 8px; color: #16a34a;"></i>Receivables vs Payables Health</h2>
+        </div>
+        <div class="panel-body" style="display: flex; flex-direction: column; gap: 16px; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-radius: var(--radius-md); background-color: #dcfce7; border: 1px solid #bbf7d0;">
+                <div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #15803d; text-transform: uppercase;">Customer Receivables (Aana Hai)</div>
+                    <div style="font-size: 1.35rem; font-weight: 800; color: #16a34a; margin-top: 4px;">Rs. {{ total_customer_receivables|floatformat:2 }}</div>
+                </div>
+                <i class="fa-solid fa-wallet" style="font-size: 1.8rem; color: #16a34a; opacity: 0.4;"></i>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-radius: var(--radius-md); background-color: #fee2e2; border: 1px solid #fecaca;">
+                <div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #b91c1c; text-transform: uppercase;">Total Liabilities (Dena Hai)</div>
+                    <div style="font-size: 1.35rem; font-weight: 800; color: #dc2626; margin-top: 4px;">Rs. {{ total_overall_payables|floatformat:2 }}</div>
+                </div>
+                <i class="fa-solid fa-hand-holding-dollar" style="font-size: 1.8rem; color: #dc2626; opacity: 0.4;"></i>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+

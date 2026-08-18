@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+
+{% block title %}Supplier Khata — {{ supplier.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><i class="fa-solid fa-store" style="margin-right: 8px;"></i>{{ supplier.name }}</h1>
+        <p class="page-subtitle">Market Supplier Ledger & Payment History</p>
+    </div>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <a href="{% url 'supplier_list' %}" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> List Suppliers
+        </a>
+        <button class="btn btn-success" style="background-color: #16a34a; color: white;" onclick="document.getElementById('payment-modal').classList.add('show')">
+            <i class="fa-solid fa-money-bill-wave"></i> Record Vendor Payment
+        </button>
+    </div>
+</div>
+
+<div class="details-grid">
+    <!-- Left Column: Parts bought on credit & Payment History -->
+    <div style="display: flex; flex-direction: column; gap: 28px;">
+        <!-- Parts Stock Purchased -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fa-solid fa-boxes-stacked" style="margin-right: 8px;"></i>Parts Sourced / Purchased</h2>
+            </div>
+            <div class="panel-body" style="padding: 0;">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Part Name & SKU</th>
+                                <th>Unit Cost</th>
+                                <th>Qty Sourced</th>
+                                <th>Usage / Repair Job</th>
+                                <th>Mode</th>
+                                <th style="text-align: right;">Total Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in parts %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'part_detail' item.part.id %}" style="font-weight: 600; color: var(--primary-color);">
+                                        {{ item.part.name }}
+                                    </a>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">SKU: {{ item.part.sku }}</div>
+                                </td>
+                                <td>Rs. {{ item.part.purchase_cost|floatformat:2 }}</td>
+                                <td>
+                                    <strong>{{ item.total_acquired_qty }} pcs</strong>
+                                    {% if item.current_stock > 0 %}
+                                    <span class="badge" style="background-color: #dbeafe; color: #1e40af; font-size: 0.7rem; margin-left: 4px;">{{ item.current_stock }} in stock</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.repair_uses %}
+                                        {% for ru in item.repair_uses %}
+                                        <div style="margin-bottom: 2px;">
+                                            <a href="{% url 'repair_detail' ru.repair_job.id %}" style="font-weight: 600; color: #2563eb; font-size: 0.82rem;">
+                                                <i class="fa-solid fa-mobile-screen"></i> {{ ru.repair_job.job_number }}
+                                            </a>
+                                            <span style="font-size: 0.75rem; color: var(--text-muted);">(x{{ ru.quantity }})</span>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="badge" style="background-color: #f1f5f9; color: #475569; font-size: 0.75rem;">Inventory Stock</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.part.is_credit_purchase %}
+                                    <span class="badge" style="background-color: #fee2e2; color: #dc2626;">UDHAR (CREDIT)</span>
+                                    {% else %}
+                                    <span class="badge" style="background-color: #dcfce7; color: #16a34a;">CASH</span>
+                                    {% endif %}
+                                </td>
+                                <td style="text-align: right; font-weight: 700; color: {% if item.part.is_credit_purchase %}#dc2626{% else %}var(--text-primary){% endif %};">
+                                    Rs. {{ item.total_cost|floatformat:2 }}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 24px; color: var(--text-muted);">
+                                    No parts recorded under this supplier yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payments Made Ledger -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fa-solid fa-receipt" style="margin-right: 8px;"></i>Vendor Payments History</h2>
+            </div>
+            <div class="panel-body" style="padding: 0;">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Payment Method</th>
+                                <th>Recorded By</th>
+                                <th>Note / Ref</th>
+                                <th style="text-align: right;">Amount Paid</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pmt in payments %}
+                            <tr>
+                                <td>{{ pmt.created_at|date:"M d, Y, h:i A" }}</td>
+                                <td><span class="badge badge-ready">{{ pmt.get_payment_method_display }}</span></td>
+                                <td>{{ pmt.paid_by.username|default:"System" }}</td>
+                                <td>{{ pmt.notes|default:"N/A" }}</td>
+                                <td style="text-align: right; font-weight: 700; color: #16a34a;">Rs. {{ pmt.amount|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 24px; color: var(--text-muted);">
+                                    No payments recorded yet. Click <strong>Record Vendor Payment</strong> to log cash paid to supplier.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Balance Summary Card & Contact Info -->
+    <div style="display: flex; flex-direction: column; gap: 28px;">
+        <!-- Outstanding Udhar Balance Card -->
+        <div class="panel" style="background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); color: #ffffff;">
+            <div class="panel-body" style="padding: 28px; text-align: center;">
+                <div style="font-size: 0.85rem; text-transform: uppercase; color: rgba(255,255,255,0.6); letter-spacing: 1px; font-weight: 600;">Current Udhar Payable</div>
+                <div style="font-size: 2.25rem; font-weight: 700; margin: 12px 0; color: {% if supplier.due_balance > 0 %}#fca5a5{% else %}#4ade80{% endif %};">
+                    Rs. {{ supplier.due_balance|floatformat:2 }}
+                </div>
+                
+                <div style="display: flex; justify-content: space-around; margin-top: 20px; font-size: 0.9rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+                    <div>
+                        <div style="color: rgba(255,255,255,0.6);">Total Credit Value</div>
+                        <div style="font-weight: 600; margin-top: 4px;">Rs. {{ supplier.total_purchases_value|floatformat:2 }}</div>
+                    </div>
+                    <div>
+                        <div style="color: rgba(255,255,255,0.6);">Total Paid</div>
+                        <div style="font-weight: 600; margin-top: 4px; color: #4ade80;">Rs. {{ supplier.total_paid|floatformat:2 }}</div>
+                    </div>
+                </div>
+                
+                <button type="button" onclick="document.getElementById('payment-modal').classList.add('show')" class="btn btn-primary" style="width: 100%; margin-top: 20px; background-color: #2563eb;">
+                    <i class="fa-solid fa-hand-holding-dollar"></i> Pay Vendor Cash
+                </button>
+            </div>
+        </div>
+
+        <!-- Supplier Info Card -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title"><i class="fa-solid fa-address-card" style="margin-right: 8px;"></i>Contact Details</h2>
+            </div>
+            <div class="panel-body" style="display: flex; flex-direction: column; gap: 12px; font-size: 0.95rem;">
+                <div>
+                    <strong>Phone:</strong> {{ supplier.phone|default:"N/A" }}
+                </div>
+                {% if supplier.whatsapp %}
+                <div>
+                    <strong>WhatsApp:</strong> <span style="color: #25d366;"><i class="fa-brands fa-whatsapp"></i> {{ supplier.whatsapp }}</span>
+                </div>
+                {% endif %}
+                <div>
+                    <strong>Address / Market:</strong> {{ supplier.address|default:"N/A" }}
+                </div>
+                {% if supplier.notes %}
+                <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 4px;">
+                    <strong>Notes:</strong>
+                    <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px;">{{ supplier.notes }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Record Vendor Payment Modal -->
+<div class="modal-backdrop" id="payment-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="font-size: 1.1rem; font-weight: 600;"><i class="fa-solid fa-money-bill-wave" style="margin-right: 8px; color: #16a34a;"></i>Record Vendor Payment</h3>
+            <button type="button" onclick="document.getElementById('payment-modal').classList.remove('show')" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+        </div>
+        <form method="post" action="{% url 'supplier_payment_create' supplier.id %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Payment Amount (Rs.) *</label>
+                    {{ payment_form.amount }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Payment Method</label>
+                    {{ payment_form.payment_method }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Note / Receipt Reference</label>
+                    {{ payment_form.notes }}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('payment-modal').classList.remove('show')">Cancel</button>
+                <button type="submit" class="btn btn-success" style="background-color: #16a34a; color: white;">Save Payment</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

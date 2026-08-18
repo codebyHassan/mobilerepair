@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+
+{% block title %}Business Reports & Financial Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Business Reports & Analytics</h1>
+        <p class="page-subtitle">Analyze shop revenue, monthly profit & loss, customer dues, and market vendor accounts.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <span class="badge badge-ready" style="font-size: 0.85rem; padding: 8px 14px;">
+            <i class="fa-solid fa-calendar-check"></i> {{ today|date:"F Y" }}
+        </span>
+    </div>
+</div>
+
+<!-- Top Financial KPI Summary Cards -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">This Month Payments Received</div>
+            <div class="stat-value" style="color: #16a34a;">Rs. {{ month_payments|floatformat:2 }}</div>
+            <div class="stat-desc" style="color: #16a34a;"><i class="fa-solid fa-arrow-trend-up"></i> Total income collected this month</div>
+        </div>
+        <div class="stat-icon" style="background-color: #dcfce7; color: #16a34a;">
+            <i class="fa-solid fa-money-bill-wave"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">This Month Expenses</div>
+            <div class="stat-value" style="color: #dc2626;">Rs. {{ month_expenses|floatformat:2 }}</div>
+            <div class="stat-desc" style="color: #dc2626;"><i class="fa-solid fa-receipt"></i> Shop operational costs</div>
+        </div>
+        <div class="stat-icon" style="background-color: #fee2e2; color: #dc2626;">
+            <i class="fa-solid fa-file-invoice"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Customer Outstanding Dues</div>
+            <div class="stat-value" style="color: #2563eb;">Rs. {{ total_customer_due|floatformat:2 }}</div>
+            <div class="stat-desc" style="color: #2563eb;"><i class="fa-solid fa-user-clock"></i> Uncollected bill balances</div>
+        </div>
+        <div class="stat-icon" style="background-color: #dbeafe; color: #2563eb;">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Total Shop Liabilities (Payables)</div>
+            <div class="stat-value" style="color: #ea580c;">Rs. {{ total_shop_payables|floatformat:2 }}</div>
+            <div class="stat-desc" style="color: #ea580c;"><i class="fa-solid fa-hand-holding-dollar"></i> Suppliers (Rs. {{ total_vendor_due|floatformat:0 }}) + Techs (Rs. {{ total_tech_unpaid_commissions|floatformat:0 }})</div>
+        </div>
+        <div class="stat-icon" style="background-color: #ffedd5; color: #ea580c;">
+            <i class="fa-solid fa-scale-unbalanced-flip"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Main Reports Hub (4 Key Modules) -->
+<h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; color: var(--text-primary);">
+    <i class="fa-solid fa-chart-pie" style="margin-right: 8px; color: var(--primary-color);"></i>Financial & Operational Statements
+</h2>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-bottom: 32px;">
+    <!-- Daily Summary Report -->
+    <div class="panel" style="display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 0; transition: var(--transition);">
+        <div class="panel-body">
+            <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background-color: var(--primary-light); color: var(--primary-color); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 16px;">
+                <i class="fa-solid fa-calendar-day"></i>
+            </div>
+            <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">Daily Summary Report</h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                Intake job counts, completed repairs, parts used cost, expenses, and cash drawer summary for today.
+            </p>
+        </div>
+        <div style="padding: 16px 24px; border-top: 1px solid var(--border-color); background-color: var(--background-color);">
+            <a href="{% url 'daily_report' %}" class="btn btn-primary btn-sm" style="width: 100%;">
+                <i class="fa-solid fa-play"></i> Run Daily Report
+            </a>
+        </div>
+    </div>
+    
+    <!-- Profit & Loss Statement -->
+    <div class="panel" style="display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 0; transition: var(--transition);">
+        <div class="panel-body">
+            <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background-color: #dcfce7; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 16px;">
+                <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">Monthly Profit & Loss</h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                Calculate net profit statement (Revenue - Parts Cost - Labor Cost - Expenses) for any month.
+            </p>
+        </div>
+        <div style="padding: 16px 24px; border-top: 1px solid var(--border-color); background-color: var(--background-color);">
+            <a href="{% url 'monthly_profit_loss' %}" class="btn btn-success btn-sm" style="width: 100%;">
+                <i class="fa-solid fa-calculator"></i> Run P&L Statement
+            </a>
+        </div>
+    </div>
+    
+    <!-- Market Suppliers & Udhar Ledger -->
+    <div class="panel" style="display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 0; transition: var(--transition);">
+        <div class="panel-body">
+            <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background-color: #ffedd5; color: #ea580c; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 16px;">
+                <i class="fa-solid fa-hand-holding-dollar"></i>
+            </div>
+            <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">Suppliers & Vendor Udhar</h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                Manage market dealers, track credit parts purchases, and log vendor cash payments.
+            </p>
+        </div>
+        <div style="padding: 16px 24px; border-top: 1px solid var(--border-color); background-color: var(--background-color);">
+            <a href="{% url 'supplier_list' %}" class="btn btn-secondary btn-sm" style="width: 100%; border-color: #ea580c; color: #ea580c;">
+                <i class="fa-solid fa-store"></i> Manage Vendor Udhar
+            </a>
+        </div>
+    </div>
+
+    <!-- Inventory Stock Audit -->
+    <div class="panel" style="display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 0; transition: var(--transition);">
+        <div class="panel-body">
+            <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background-color: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 16px;">
+                <i class="fa-solid fa-boxes-stacked"></i>
+            </div>
+            <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">Inventory Stock Audit</h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                Audit low stock alerts, stock asset valuations, category counts, and stock adjustments.
+            </p>
+        </div>
+        <div style="padding: 16px 24px; border-top: 1px solid var(--border-color); background-color: var(--background-color);">
+            <a href="{% url 'part_list' %}" class="btn btn-secondary btn-sm" style="width: 100%; border-color: #0284c7; color: #0284c7;">
+                <i class="fa-solid fa-boxes-stacked"></i> Audit Stock Parts
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Financial Trend & Recent Payments Grid -->
+<div class="details-grid">
+    <!-- 7-Day Income vs Expense Trend Chart -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title"><i class="fa-solid fa-chart-line" style="margin-right: 8px; color: var(--primary-color);"></i>Income vs Expense Trend (Last 7 Days)</h2>
+        </div>
+        <div class="panel-body">
+            <div style="position: relative; height: 260px; width: 100%;">
+                <canvas id="reportsTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Payments Received -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title"><i class="fa-solid fa-receipt" style="margin-right: 8px; color: #16a34a;"></i>Recent Payments Received</h2>
+            <a href="{% url 'payment_list' %}" style="font-size: 0.8rem; color: var(--primary-color);">View All</a>
+        </div>
+        <div class="panel-body" style="padding: 0;">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice / Customer</th>
+                            <th>Method</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pmt in recent_payments %}
+                        <tr>
+                            <td>
+                                <div style="font-weight: 600;">{{ pmt.invoice.invoice_number }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">{{ pmt.invoice.repair_job.customer.name }}</div>
+                            </td>
+                            <td><span class="badge badge-ready">{{ pmt.get_payment_method_display }}</span></td>
+                            <td style="text-align: right; font-weight: 700; color: #16a34a;">Rs. {{ pmt.amount|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" style="text-align: center; padding: 20px; color: var(--text-muted);">No payments recorded recently.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const trendElem = document.getElementById('reportsTrendChart');
+        if (trendElem) {
+            const ctxTrend = trendElem.getContext('2d');
+            fetch('{% url "reports_data_api" %}?type=trend')
+                .then(res => res.json())
+                .then(data => {
+                    new Chart(ctxTrend, {
+                        type: 'line',
+                        data: {
+                            labels: data.labels,
+                            datasets: [
+                                {
+                                    label: 'Income Received (Rs.)',
+                                    data: data.payments,
+                                    borderColor: '#16a34a',
+                                    backgroundColor: 'rgba(22, 163, 74, 0.08)',
+                                    fill: true,
+                                    tension: 0.4,
+                                    borderWidth: 3
+                                },
+                                {
+                                    label: 'Expenses (Rs.)',
+                                    data: data.expenses,
+                                    borderColor: '#dc2626',
+                                    backgroundColor: 'transparent',
+                                    borderDash: [5, 5],
+                                    tension: 0.4,
+                                    borderWidth: 2
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'bottom' }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: 'rgba(0,0,0,0.05)' }
+                                },
+                                x: {
+                                    grid: { display: false }
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(err => console.error("Error loading trend chart:", err));
+        }
+    });
+</script>
+{% endblock %}

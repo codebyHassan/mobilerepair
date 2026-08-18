@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ title }}</h1>
+        <p class="page-subtitle">Record operational costs like utility bills, rent, tools, and inventory acquisition</p>
+    </div>
+    <a href="{% url 'expense_list' %}" class="btn btn-secondary">
+        <i class="fa-solid fa-arrow-left-long"></i> Back to Ledger
+    </a>
+</div>
+
+<div class="panel" style="max-width: 600px;">
+    <div class="panel-header">
+        <h2 class="panel-title">Expense Details</h2>
+    </div>
+    <div class="panel-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.category.id_for_label }}">Category *</label>
+                    {{ form.category }}
+                    {{ form.category.errors }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.amount.id_for_label }}">Expense Amount (Rs.) *</label>
+                    <div style="position: relative;">
+                        {{ form.amount }}
+                        <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight: 600; font-size: 0.9rem; color: var(--text-muted);">Rs.</span>
+                    </div>
+                    {{ form.amount.errors }}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.payment_method.id_for_label }}">Payment Method *</label>
+                    {{ form.payment_method }}
+                    {{ form.payment_method.errors }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.date.id_for_label }}">Date *</label>
+                    {{ form.date }}
+                    {{ form.date.errors }}
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label class="form-label" for="{{ form.description.id_for_label }}">Description / Notes</label>
+                {{ form.description }}
+                {{ form.description.errors }}
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-square-receipt"></i> Log Expense
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ title }}</h1>
+        <p class="page-subtitle">Configure pricing, manufacturer, compatibility, and default stock metrics</p>
+    </div>
+    <a href="{% url 'part_list' %}" class="btn btn-secondary">
+        <i class="fa-solid fa-arrow-left-long"></i> Back to Catalog
+    </a>
+</div>
+
+<div class="panel" style="max-width: 800px;">
+    <div class="panel-header">
+        <h2 class="panel-title">Spare Part Specifications</h2>
+    </div>
+    <div class="panel-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label class="form-label" for="{{ form.name.id_for_label }}">Part Name *</label>
+                {{ form.name }}
+                {{ form.name.errors }}
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.sku.id_for_label }}">SKU / Barcode *</label>
+                    {{ form.sku }}
+                    {{ form.sku.errors }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.category.id_for_label }}">Category *</label>
+                    {{ form.category }}
+                    {{ form.category.errors }}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.brand.id_for_label }}">Brand / Manufacturer</label>
+                    {{ form.brand }}
+                    {{ form.brand.errors }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.compatible_device.id_for_label }}">Compatible Device Models</label>
+                    {{ form.compatible_device }}
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
+                        Comma-separated models: e.g. iPhone 13, A2633
+                    </div>
+                    {{ form.compatible_device.errors }}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.purchase_cost.id_for_label }}">Purchase Cost (Shop Price) *</label>
+                    <div style="position: relative;">
+                        {{ form.purchase_cost }}
+                        <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight: 600; font-size: 0.9rem; color: var(--text-muted);">Rs.</span>
+                    </div>
+                    {{ form.purchase_cost.errors }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.selling_price.id_for_label }}">Selling Price (Customer Price) *</label>
+                    <div style="position: relative;">
+                        {{ form.selling_price }}
+                        <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight: 600; font-size: 0.9rem; color: var(--text-muted);">Rs.</span>
+                    </div>
+                    {{ form.selling_price.errors }}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.current_stock.id_for_label }}">Opening/Current Stock *</label>
+                    {{ form.current_stock }}
+                    {{ form.current_stock.errors }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.minimum_stock.id_for_label }}">Minimum Alert Stock *</label>
+                    {{ form.minimum_stock }}
+                    {{ form.minimum_stock.errors }}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.supplier_fk.id_for_label }}">Select Market Supplier / Vendor</label>
+                    {{ form.supplier_fk }}
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                        Need a new vendor? <a href="{% url 'supplier_create' %}" target="_blank" style="color: var(--primary-color);">Add Supplier</a>
+                    </div>
+                    {{ form.supplier_fk.errors }}
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; margin-top: 24px;">
+                    <label class="checkbox-label" style="font-weight: 600; color: #dc2626;">
+                        {{ form.is_credit_purchase }}
+                        <i class="fa-solid fa-hand-holding-dollar" style="margin-left: 4px;"></i> Bought on Credit (Add to Vendor Udhar)
+                    </label>
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 28px;">
+                <label class="form-label" for="{{ form.notes.id_for_label }}">Internal Notes / Location</label>
+                {{ form.notes }}
+                {{ form.notes.errors }}
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-check"></i> Save Spare Part
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

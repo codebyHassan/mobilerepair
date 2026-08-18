@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Technicians{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Technicians</h1>
+        <p class="page-subtitle">Manage repair staff and specializations</p>
+    </div>
+    <a href="{% url 'technician_create' %}" class="btn btn-primary">
+        <i class="fa-solid fa-user-plus"></i> Add Technician
+    </a>
+</div>
+
+<div class="panel" style="max-width: 900px;">
+    <div class="panel-header">
+        <h2 class="panel-title">Staff Registry</h2>
+    </div>
+    <div class="panel-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Specialization</th>
+                        <th>Status</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tech in technicians %}
+                    <tr>
+                        <td style="font-weight: 600; color: var(--text-primary);">{{ tech.name }}</td>
+                        <td>{{ tech.phone }}</td>
+                        <td>{{ tech.specialization|default:"General Repair" }}</td>
+                        <td>
+                            {% if tech.status == 'active' %}
+                            <span class="badge" style="background-color: var(--status-ready-bg); color: var(--status-ready-text);">Active</span>
+                            {% else %}
+                            <span class="badge" style="background-color: var(--status-received-bg); color: var(--status-received-text);">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <a href="{% url 'technician_edit' tech.id %}" class="btn btn-secondary btn-sm">
+                                <i class="fa-solid fa-pen-to-square"></i> Edit
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                            No technicians registered. Add one to assign them to repair jobs.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

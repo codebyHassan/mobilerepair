@@ -1,0 +1,349 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Profile & Security — {{ request.user.username }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<style>
+/* ==========================================================================
+   USER PROFILE & SECURITY SETTINGS STYLES
+   ========================================================================== */
+.profile-page-wrapper {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem 1rem;
+    font-family: var(--font-family, 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif);
+}
+
+/* Hero Profile Banner */
+.profile-hero-card {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%);
+    color: #ffffff;
+    border-radius: 24px;
+    padding: 2.25rem 2rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 15px 35px -10px rgba(15, 23, 42, 0.35);
+    margin-bottom: 2rem;
+}
+
+.profile-hero-card::after {
+    content: '';
+    position: absolute;
+    top: -60px;
+    right: -60px;
+    width: 240px;
+    height: 240px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, rgba(255, 255, 255, 0) 70%);
+    pointer-events: none;
+}
+
+.profile-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: #ffffff;
+    font-size: 2.25rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+}
+
+.profile-meta-badge {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 0.35rem 0.85rem;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* Profile Form Cards */
+.profile-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 1.75rem;
+    box-shadow: 0 4px 20px -5px rgba(15, 23, 42, 0.05);
+    height: 100%;
+}
+
+.profile-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.profile-card-header i {
+    font-size: 1.4rem;
+    color: #4f46e5;
+}
+
+.profile-form-label {
+    font-size: 0.825rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+}
+
+.profile-form-control {
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    padding: 0.65rem 0.95rem;
+    font-size: 0.925rem;
+    transition: all 0.2s ease;
+}
+
+.profile-form-control:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+}
+
+.btn-profile-primary {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    color: #ffffff;
+    font-weight: 600;
+    border-radius: 12px;
+    padding: 0.65rem 1.5rem;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    transition: all 0.2s ease;
+}
+
+.btn-profile-primary:hover {
+    background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.35);
+}
+
+.btn-password-save {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #ffffff;
+    font-weight: 600;
+    border-radius: 12px;
+    padding: 0.65rem 1.5rem;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+    transition: all 0.2s ease;
+}
+
+.btn-password-save:hover {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+.security-tip-box {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 14px;
+    padding: 1rem;
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-page-wrapper">
+    
+    <!-- Hero Profile Banner -->
+    <div class="profile-hero-card">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="profile-avatar-large">
+                    {{ request.user.username|slice:":1"|upper }}
+                </div>
+                <div>
+                    <h2 class="h4 fw-bold mb-1 text-white">
+                        {{ request.user.get_full_name|default:request.user.username }}
+                    </h2>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
+                        <span class="profile-meta-badge">
+                            <i class="bi bi-person-fill"></i> @{{ request.user.username }}
+                        </span>
+                        <span class="profile-meta-badge">
+                            <i class="bi bi-shield-lock-fill text-warning"></i>
+                            {% if request.user.is_superuser %}Super Administrator{% elif request.user.technician_profile %}Technician (ESS Active){% else %}{{ request.user.groups.first.name|default:"Staff User" }}{% endif %}
+                        </span>
+                        {% if request.user.email %}
+                        <span class="profile-meta-badge">
+                            <i class="bi bi-envelope-fill"></i> {{ request.user.email }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Meta Stats -->
+            <div class="text-md-end text-white-50 small">
+                <div><i class="bi bi-calendar-check me-1"></i> Member Since: <strong class="text-white">{{ request.user.date_joined|date:"M d, Y" }}</strong></div>
+                {% if request.user.last_login %}
+                <div><i class="bi bi-clock-history me-1"></i> Last Active: <strong class="text-white">{{ request.user.last_login|date:"M d, Y, h:i A" }}</strong></div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Profile & Password Grid -->
+    <div class="row g-4">
+        
+        <!-- Left Column: Personal Information -->
+        <div class="col-lg-6">
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <i class="bi bi-person-badge"></i>
+                    <div>
+                        <h3 class="h6 fw-bold text-dark mb-0">Personal Profile Details</h3>
+                        <span class="text-muted" style="font-size: 0.8rem;">Update your account name and email address</span>
+                    </div>
+                </div>
+
+                <form method="POST" action="{% url 'user_profile' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="profile_info">
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <label class="profile-form-label">First Name</label>
+                            <input type="text" name="first_name" class="form-control profile-form-control" value="{{ request.user.first_name }}" placeholder="e.g. Muhammad">
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="profile-form-label">Last Name</label>
+                            <input type="text" name="last_name" class="form-control profile-form-control" value="{{ request.user.last_name }}" placeholder="e.g. Akmal">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="profile-form-label">Username</label>
+                        <input type="text" class="form-control profile-form-control bg-light" value="{{ request.user.username }}" readonly disabled>
+                        <small class="text-muted" style="font-size: 0.75rem;">Username cannot be changed directly.</small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="profile-form-label">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
+                            <input type="email" name="email" class="form-control profile-form-control border-start-0" value="{{ request.user.email }}" placeholder="name@example.com">
+                        </div>
+                    </div>
+
+                    <!-- Linked Technician Profile Info if applicable -->
+                    {% if request.user.technician_profile %}
+                    <div class="p-3 mb-4 rounded-3" style="background: #eff6ff; border: 1px solid #bfdbfe;">
+                        <div class="d-flex align-items-center gap-2 mb-2 text-primary fw-bold small">
+                            <i class="bi bi-tools"></i> Linked Technician Profile: {{ request.user.technician_profile.name }}
+                        </div>
+                        <div class="row g-2 text-secondary small">
+                            <div class="col-6">Phone: <strong>{{ request.user.technician_profile.phone|default:"N/A" }}</strong></div>
+                            <div class="col-6">Commission Rate: <strong>{{ request.user.technician_profile.default_commission_rate }}%</strong></div>
+                            <div class="col-12">Specialization: <strong>{{ request.user.technician_profile.specialization|default:"General Hardware Repair" }}</strong></div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="text-end">
+                        <button type="submit" class="btn-profile-primary">
+                            <i class="bi bi-check2-circle"></i> Save Profile Details
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Column: Change Password -->
+        <div class="col-lg-6">
+            <div class="profile-card" id="security-section">
+                <div class="profile-card-header">
+                    <i class="bi bi-key-fill text-warning"></i>
+                    <div>
+                        <h3 class="h6 fw-bold text-dark mb-0">Change Password</h3>
+                        <span class="text-muted" style="font-size: 0.8rem;">Ensure your account remains safe and protected</span>
+                    </div>
+                </div>
+
+                <form method="POST" action="{% url 'change_password' %}">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="profile-form-label">Current Password <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-shield-lock text-muted"></i></span>
+                            <input type="password" name="old_password" id="old_password" class="form-control profile-form-control border-start-0" required placeholder="Enter current password">
+                            <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePassVisibility('old_password')"><i class="bi bi-eye"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="profile-form-label">New Password <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock-fill text-muted"></i></span>
+                            <input type="password" name="new_password1" id="new_password1" class="form-control profile-form-control border-start-0" required placeholder="Minimum 6 characters">
+                            <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePassVisibility('new_password1')"><i class="bi bi-eye"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="profile-form-label">Confirm New Password <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock-fill text-muted"></i></span>
+                            <input type="password" name="new_password2" id="new_password2" class="form-control profile-form-control border-start-0" required placeholder="Re-type new password">
+                            <button class="btn btn-outline-secondary border-start-0" type="button" onclick="togglePassVisibility('new_password2')"><i class="bi bi-eye"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="security-tip-box">
+                        <i class="bi bi-shield-check text-success me-1"></i>
+                        Tip: Use at least 8 characters with a combination of letters, numbers, and symbols for better security.
+                    </div>
+
+                    <div class="text-end mt-4">
+                        <button type="submit" class="btn-password-save">
+                            <i class="bi bi-arrow-repeat"></i> Update Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+function togglePassVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    if (input) {
+        if (input.type === 'password') {
+            input.type = 'text';
+        } else {
+            input.type = 'password';
+        }
+    }
+}
+</script>
+{% endblock %}

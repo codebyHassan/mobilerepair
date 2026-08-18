@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventory Parts{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Inventory & Parts</h1>
+        <p class="page-subtitle">Manage spare parts inventory, pricing, and stock levels</p>
+    </div>
+    <a href="{% url 'part_create' %}" class="btn btn-primary">
+        <i class="fa-solid fa-plus"></i> Add Spare Part
+    </a>
+</div>
+
+<!-- Stock summary panels -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Total Unique Items</div>
+            <div class="stat-value">{{ total_products }}</div>
+        </div>
+        <div class="stat-icon">
+            <i class="fa-solid fa-list"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div>
+            <div class="stat-title">Total Stock Value</div>
+            <div class="stat-value">Rs. {{ total_value|floatformat:2 }}</div>
+        </div>
+        <div class="stat-icon" style="background-color: #e0f2fe; color: #0284c7;">
+            <i class="fa-solid fa-coins"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card" {% if low_stock_count > 0 %}style="border-color: #fed7aa;"{% endif %}>
+        <div>
+            <div class="stat-title">Low Stock Items</div>
+            <div class="stat-value" {% if low_stock_count > 0 %}style="color: #ea580c;"{% endif %}>{{ low_stock_count }}</div>
+        </div>
+        <div class="stat-icon" style="background-color: #ffedd5; color: #ea580c;">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card" {% if out_of_stock_count > 0 %}style="border-color: #fca5a5;"{% endif %}>
+        <div>
+            <div class="stat-title">Out of Stock</div>
+            <div class="stat-value" {% if out_of_stock_count > 0 %}style="color: #dc2626;"{% endif %}>{{ out_of_stock_count }}</div>
+        </div>
+        <div class="stat-icon" style="background-color: #fee2e2; color: #dc2626;">
+            <i class="fa-solid fa-circle-xmark"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Category Filters -->
+<div class="panel" style="margin-bottom: 20px;">
+    <div class="panel-body" style="padding: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-right: 8px;">Filter Category:</span>
+        <a href="{% url 'part_list' %}" class="btn {% if not selected_category %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">All</a>
+        {% for cat in categories %}
+            <a href="{% url 'part_list' %}?category={{ cat }}{% if query %}&q={{ query }}{% endif %}" class="btn {% if selected_category == cat %}btn-primary{% else %}btn-secondary{% endif %} btn-sm">
+                {{ cat }}
+            </a>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Parts Catalog</h2>
+        <form method="get" action="{% url 'part_list' %}" style="display: flex; gap: 8px;">
+            {% if selected_category %}
+                <input type="hidden" name="category" value="{{ selected_category }}">
+            {% endif %}
+            <input type="text" name="q" value="{{ query }}" placeholder="Search name or SKU..." class="form-control" style="width: 240px; padding: 6px 12px; font-size: 0.9rem;">
+            <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+            {% if query %}
+                <a href="{% url 'part_list' %}{% if selected_category %}?category={{ selected_category }}{% endif %}" class="btn btn-danger btn-sm" title="Clear Search">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="panel-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Part Name</th>
+                        <th>SKU</th>
+                        <th>Category</th>
+                        <th>Compatible Device</th>
+                        <th>Purchase Cost</th>
+                        <th>Selling Price</th>
+                        <th>Stock Level</th>
+                        <th>Stock Value</th>
+                        <th>Status</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in parts %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'part_detail' item.part.id %}" style="font-weight: 600; color: var(--primary-color);">
+                                {{ item.part.name }}
+                            </a>
+                            {% if item.part.brand %}
+                                <div style="font-size: 0.75rem; color: var(--text-secondary);">Brand: {{ item.part.brand }}</div>
+                            {% endif %}
+                        </td>
+                        <td><code style="background-color: var(--background-color); padding: 2px 6px; border-radius: 4px;">{{ item.part.sku }}</code></td>
+                        <td>{{ item.part.category }}</td>
+                        <td>{{ item.part.compatible_device|default:"Generic" }}</td>
+                        <td>Rs. {{ item.part.purchase_cost|floatformat:2 }}</td>
+                        <td>Rs. {{ item.part.selling_price|floatformat:2 }}</td>
+                        <td>
+                            <span style="font-weight: 600; {% if item.part.current_stock <= item.part.minimum_stock %}color: #ea580c;{% endif %}">
+                                {{ item.part.current_stock }}
+                            </span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">/ min {{ item.part.minimum_stock }}</span>
+                        </td>
+                        <td>Rs. {{ item.stock_value|floatformat:2 }}</td>
+                        <td>
+                            {% if item.status == 'OUT OF STOCK' %}
+                                <span class="badge" style="background-color: var(--status-cancelled-bg); color: var(--status-cancelled-text);">Out of Stock</span>
+                            {% elif item.status == 'LOW STOCK' %}
+                                <span class="badge" style="background-color: var(--status-waiting-approval-bg); color: var(--status-waiting-approval-text);">Low Stock</span>
+                            {% else %}
+                                <span class="badge" style="background-color: var(--status-ready-bg); color: var(--status-ready-text);">In Stock</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right; white-space: nowrap;">
+                            <a href="{% url 'part_detail' item.part.id %}" class="btn btn-secondary btn-sm" title="View Ledger">
+                                <i class="fa-solid fa-eye"></i> View
+                            </a>
+                            <a href="{% url 'part_edit' item.part.id %}" class="btn btn-secondary btn-sm" title="Edit Part Profile">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </a>
+                            <a href="{% url 'transaction_create' item.part.id %}" class="btn btn-success btn-sm" title="Adjust Stock">
+                                <i class="fa-solid fa-box-open"></i> +Stock
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                            <i class="fa-solid fa-boxes-stacked" style="font-size: 2.5rem; margin-bottom: 12px; display: block; opacity: 0.5;"></i>
+                            No parts found in stock. Click "Add Spare Part" to start inventory catalog.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

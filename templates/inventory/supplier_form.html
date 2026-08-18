@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ title }}</h1>
+        <p class="page-subtitle">Register a market dealer/wholesaler to track parts purchases and credit balances.</p>
+    </div>
+    <div>
+        <a href="{% url 'supplier_list' %}" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i> Back to Suppliers
+        </a>
+    </div>
+</div>
+
+<div class="panel" style="max-width: 600px;">
+    <div class="panel-header">
+        <h2 class="panel-title"><i class="fa-solid fa-store" style="margin-right: 8px;"></i>Supplier Profile Details</h2>
+    </div>
+    <div class="panel-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label class="form-label" for="{{ form.name.id_for_label }}">Supplier / Vendor Name *</label>
+                {{ form.name }}
+                {{ form.name.errors }}
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.phone.id_for_label }}">Phone Number</label>
+                    {{ form.phone }}
+                    {{ form.phone.errors }}
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.whatsapp.id_for_label }}">WhatsApp Number</label>
+                    {{ form.whatsapp }}
+                    {{ form.whatsapp.errors }}
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="{{ form.address.id_for_label }}">Shop Address / Market Location</label>
+                {{ form.address }}
+                {{ form.address.errors }}
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="{{ form.notes.id_for_label }}">Notes / Payment Terms</label>
+                {{ form.notes }}
+                {{ form.notes.errors }}
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                <a href="{% url 'supplier_list' %}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Supplier</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
