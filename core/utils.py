@@ -174,13 +174,10 @@ def generate_whatsapp_final_invoice_url(invoice, settings, request=None):
 
     items = []
     for part in parts:
-        total = float(part.customer_price) * part.quantity
-        items.append(f"• {part.part.name} x{part.quantity} — {curr} {total:,.2f}")
+        items.append(f"• Spare Part: {part.part.name} x{part.quantity} — Included")
 
-    if labor > 0:
-        items.append(f"• Service & Labor Charge — {curr} {labor:,.2f}")
-
-    items_text = "\n".join(items) if items else "• Mobile Repair & Servicing"
+    items.append(f"• Complete Repair & Diagnostic Package — {curr} {float(invoice.subtotal or 0):,.2f}")
+    items_text = "\n".join(items)
 
     due_amount = float(invoice.due_amount or 0)
     if due_amount <= 0:

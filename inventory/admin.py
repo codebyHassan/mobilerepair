@@ -35,7 +35,7 @@ class SupplierAdmin(admin.ModelAdmin):
         from django.utils.html import format_html
         bal = obj.due_balance
         if bal > 0:
-            return format_html('<span style="color:red; font-weight:bold;">Rs. {:,.0f}</span>', bal)
+            return format_html('<span style="color:red; font-weight:bold;">Rs. {}</span>', f"{bal:,.0f}")
         return format_html('<span style="color:green;">✅ Cleared</span>')
 
 

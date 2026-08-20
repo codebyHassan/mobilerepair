@@ -67,16 +67,15 @@ class RepairWorkflowTestCase(TestCase):
             minimum_stock=2
         )
         
-        # 6. Technical Diagnosis & Estimate update (Labor/Quotation: 2,000)
+        # 6. Technical Diagnosis & Estimate update (All-Inclusive Customer Quote: Rs. 20,000)
         diagnosis.technician_diagnosis = "LCD display assembly damaged."
         diagnosis.recommended_repair = "Replace screen assembly."
         diagnosis.save()
         
-        estimate.estimated_cost = Decimal("2000.00")
-        estimate.status = 'approved'
+        estimate.estimated_cost = Decimal("20000.00")
         estimate.save()
         
-        # 7. Consume part in repair
+        # 7. Issue Part to Repair Job
         part.current_stock -= 1
         part.save()
         
@@ -103,8 +102,8 @@ class RepairWorkflowTestCase(TestCase):
         recalculate_repair_bill(job)
         invoice.refresh_from_db()
         
-        # Assertions after part & estimate link
-        self.assertEqual(invoice.subtotal, Decimal("20000.00")) # 18000 screen + 2000 labor
+        # Assertions: invoice subtotal is locked to the all-inclusive diagnostic estimate (Rs. 20,000)
+        self.assertEqual(invoice.subtotal, Decimal("20000.00"))
         self.assertEqual(invoice.total, Decimal("20000.00"))
         self.assertEqual(invoice.due_amount, Decimal("20000.00"))
         

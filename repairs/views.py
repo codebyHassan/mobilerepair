@@ -34,17 +34,12 @@ def generate_job_number():
 
 def recalculate_repair_bill(job):
     from decimal import Decimal
-    parts_total = job.parts_used.annotate(
-        total_part_price=F('customer_price') * F('quantity')
-    ).aggregate(Sum('total_part_price'))['total_part_price__sum'] or Decimal('0.00')
-    parts_total = Decimal(str(parts_total))
-    
     estimate = job.estimates.order_by('-updated_at').first()
-    labor = Decimal(str(estimate.estimated_labor_cost)) if estimate else Decimal('0.00')
+    diag_cost = Decimal(str(estimate.estimated_cost)) if (estimate and estimate.estimated_cost) else Decimal('0.00')
     
     if hasattr(job, 'invoice'):
         invoice = job.invoice
-        invoice.subtotal = parts_total + labor
+        invoice.subtotal = diag_cost
         invoice.save()
 
 def get_scoped_repair_jobs(request):
@@ -53,7 +48,12 @@ def get_scoped_repair_jobs(request):
     if perm.can_view_all_repairs:
         return qs
     if perm.is_technician:
-        tech = request.user.technician_profile
+        tech = getattr(request.user, 'technician_profile', None)
+        if not tech:
+            tech, _ = Technician.objects.get_or_create(
+                user=request.user,
+                defaults={'name': request.user.get_full_name() or request.user.username, 'phone': ''}
+            )
         return qs.filter(
             Q(assigned_technician=tech) |
             Q(referred_by_technician=tech) |
@@ -197,19 +197,10 @@ def repair_intake(request):
                         pass
                 
                 assigned_technician = None
-                if assigned_tech_raw:
-                    assigned_tech_id = decode_id(assigned_tech_raw)
-                    if assigned_tech_id:
-                        assigned_technician = get_object_or_404(Technician, pk=assigned_tech_id)
+                if hasattr(request.user, 'technician_profile') and request.user.technician_profile:
+                    assigned_technician = request.user.technician_profile
 
-                referred_tech_raw = request.POST.get('referred_by_technician', '').strip()
-                referred_by_technician = None
-                if referred_tech_raw:
-                    ref_id = decode_id(referred_tech_raw) or (int(referred_tech_raw) if referred_tech_raw.isdigit() else None)
-                    if ref_id:
-                        referred_by_technician = Technician.objects.filter(pk=ref_id).first()
-                if not referred_by_technician and hasattr(request.user, 'technician_profile'):
-                    referred_by_technician = request.user.technician_profile
+                referred_by_technician = assigned_technician
                 
                 job = RepairJob.objects.create(
                     customer=customer,
@@ -851,22 +842,29 @@ def repair_lifecycle(request, pk, stage_code=None):
                         try:
                             rp = RepairPart.objects.get(pk=rp_id, repair_job=job)
                             p = rp.part
-                            p.current_stock += rp.quantity
-                            p.save()
-
-                            InventoryTransaction.objects.create(
-                                part=p,
-                                transaction_type='return',
-                                quantity=rp.quantity,
-                                repair_job=job,
-                                note=f"Returned from Repair Job {job.job_number}",
-                                created_by=request.user if request.user.is_authenticated else None
-                            )
-
                             p_name = p.name
+                            is_supplier_part = bool(p.supplier_fk and p.is_credit_purchase)
+                            supp_name = p.supplier_fk.name if p.supplier_fk else None
+
+                            # Delete the RepairPart link
                             rp.delete()
+
+                            # If this was registered specifically for this repair job from a supplier:
+                            if is_supplier_part:
+                                if p.repair_uses.count() == 0 and p.current_stock <= 0:
+                                    p.delete()
+                                    msg = f"Part '{p_name}' deleted from job and completely removed from Supplier ({supp_name}) Khata record."
+                                else:
+                                    p.is_credit_purchase = False
+                                    p.save()
+                                    msg = f"Part '{p_name}' removed from job and cleared from Supplier ({supp_name}) Khata balance."
+                            else:
+                                p.current_stock += rp.quantity
+                                p.save()
+                                msg = f"Part '{p_name}' removed from job & returned to inventory stock."
+
                             recalculate_repair_bill(job)
-                            messages.success(request, f"Part '{p_name}' removed from job & returned to inventory stock.")
+                            messages.success(request, msg)
                         except RepairPart.DoesNotExist:
                             pass
                         return redirect('repair_lifecycle_stage', pk=job.id, stage_code='PARTS_ISSUE')
@@ -878,7 +876,18 @@ def repair_lifecycle(request, pk, stage_code=None):
 
                     if part_source_type == 'existing_stock' and part_id:
                         qty = int(request.POST.get('quantity', 1) or 1)
+                        if qty <= 0:
+                            qty = 1
                         part_obj = get_object_or_404(Part, pk=part_id)
+
+                        # Strict Out-of-Stock Validation
+                        if part_obj.current_stock <= 0:
+                            messages.error(request, f"❌ Cannot issue '{part_obj.name}': Item is OUT OF STOCK (Available: 0). Please replenish inventory or source from supplier.")
+                            return redirect('repair_lifecycle_stage', pk=job.id, stage_code='PARTS_ISSUE')
+                        elif part_obj.current_stock < qty:
+                            messages.error(request, f"❌ Insufficient inventory stock for '{part_obj.name}'. Requested quantity: {qty}, but only {part_obj.current_stock} available in stock.")
+                            return redirect('repair_lifecycle_stage', pk=job.id, stage_code='PARTS_ISSUE')
+
                         cust_price = Decimal(request.POST.get('customer_price', str(part_obj.selling_price)) or str(part_obj.selling_price))
 
                         RepairPart.objects.create(
@@ -907,7 +916,24 @@ def repair_lifecycle(request, pk, stage_code=None):
 
                     elif part_source_type == 'new_supplier_part' and new_part_name:
                         supp_id = request.POST.get('supplier_id')
-                        supplier_obj = Supplier.objects.filter(pk=supp_id).first() if supp_id else None
+                        new_supp_name = request.POST.get('new_supplier_name', '').strip()
+                        supplier_obj = None
+
+                        if supp_id and supp_id != 'NEW_SUPPLIER':
+                            supplier_obj = Supplier.objects.filter(pk=supp_id).first()
+                        elif new_supp_name:
+                            new_supp_phone = request.POST.get('new_supplier_phone', '').strip()
+                            new_supp_address = request.POST.get('new_supplier_address', '').strip()
+                            supplier_obj, _ = Supplier.objects.get_or_create(
+                                name=new_supp_name,
+                                defaults={
+                                    'phone': new_supp_phone,
+                                    'whatsapp': new_supp_phone,
+                                    'address': new_supp_address,
+                                    'notes': f"Auto-registered from Repair Job #{job.job_number}"
+                                }
+                            )
+
                         part_category = request.POST.get('new_part_category', 'Replacement Component').strip() or 'Replacement Component'
                         purchase_cost = Decimal(request.POST.get('purchase_cost', '0') or '0')
                         cust_price_raw = request.POST.get('supplier_customer_price') or request.POST.get('customer_price')
@@ -1491,6 +1517,11 @@ def technician_ess_dashboard(request):
     from django.db.models import Sum, Count
 
     tech_profile = getattr(request.user, 'technician_profile', None)
+    if not tech_profile and (request.user.is_superuser or request.user.groups.filter(name__iregex=r'^(technician|tech)$').exists() or getattr(request.user, 'role', '').upper() in ['TECHNICIAN', 'TECH']):
+        tech_profile, _ = Technician.objects.get_or_create(
+            user=request.user,
+            defaults={'name': request.user.get_full_name() or request.user.username, 'phone': ''}
+        )
     if not tech_profile and request.user.is_superuser:
         tech_profile = Technician.objects.first()
 

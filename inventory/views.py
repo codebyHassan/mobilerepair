@@ -100,8 +100,8 @@ def supplier_detail(request, pk):
         used_uses = list(p.repair_uses.all())
         qty_used = sum(u.quantity for u in used_uses)
         total_acquired_qty = p.current_stock + qty_used
-        if total_acquired_qty == 0:
-            total_acquired_qty = 1
+        if total_acquired_qty <= 0:
+            continue
         total_cost = float(p.purchase_cost) * total_acquired_qty
         parts_data.append({
             'part': p,
@@ -377,23 +377,27 @@ def remove_part(request, repair_part_id):
     part = rp.part
     qty = rp.quantity
     
-    # Return stock to inventory
-    part.current_stock += qty
-    part.save()
-    
-    # Log reverse transaction
-    InventoryTransaction.objects.create(
-        part=part,
-        transaction_type='return',
-        quantity=qty,
-        repair_job=job,
-        note=f"Removed from Job {job.job_number} - Returned stock",
-        created_by=request.user
-    )
-    
-    # Remove RepairPart
+    part_name = part.name
+    is_supplier_part = bool(part.supplier_fk and part.is_credit_purchase)
+    supp_name = part.supplier_fk.name if part.supplier_fk else None
+
+    # Remove RepairPart link
     rp.delete()
-    
+
+    # If this was registered specifically for this job from a supplier:
+    if is_supplier_part:
+        if part.repair_uses.count() == 0 and part.current_stock <= 0:
+            part.delete()
+            msg = f"Removed part '{part_name}' from repair and completely deleted from Supplier ({supp_name}) Khata record."
+        else:
+            part.is_credit_purchase = False
+            part.save()
+            msg = f"Removed part '{part_name}' from repair and cleared from Supplier ({supp_name}) Khata balance."
+    else:
+        part.current_stock += qty
+        part.save()
+        msg = f"Removed part '{part_name}' from repair and returned stock to inventory."
+
     recalculate_repair_bill(job)
-    messages.success(request, f"Removed part {part.name} from repair and returned stock to inventory.")
+    messages.success(request, msg)
     return redirect('repair_detail', pk=job.id)

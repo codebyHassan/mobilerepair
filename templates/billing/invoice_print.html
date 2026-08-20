@@ -434,19 +434,17 @@
             <tbody>
                 {% for rp in parts %}
                 <tr>
-                    <td>{{ rp.part.name }}</td>
+                    <td>{{ rp.part.name }} (Replacement Part)</td>
                     <td>{{ rp.quantity }}</td>
-                    <td style="text-align: right;">{% widthratio rp.customer_price 1 rp.quantity as total_part %}{{ total_part|floatformat:2 }}</td>
+                    <td style="text-align: right; color: #16a34a; font-weight: 500;">Included</td>
                 </tr>
                 {% endfor %}
 
-                {% if labor > 0 %}
                 <tr>
-                    <td>Technician Labor & Service</td>
+                    <td>Complete Repair &amp; Diagnostic Service Package</td>
                     <td>1</td>
-                    <td style="text-align: right;">{{ labor|floatformat:2 }}</td>
+                    <td style="text-align: right; font-weight: 600;">Rs. {{ invoice.subtotal|floatformat:2 }}</td>
                 </tr>
-                {% endif %}
             </tbody>
         </table>
 

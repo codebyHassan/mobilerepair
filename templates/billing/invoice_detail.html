@@ -130,23 +130,23 @@ function showImageCopyToast(docTitle) {
                         <tr>
                             <td>
                                 <div style="font-weight: 500;">{{ rp.part.name }}</div>
-                                <div style="font-size: 0.75rem; color: var(--text-muted);">Spare Part Stock Item</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Replacement Spare Part</div>
                             </td>
-                            <td>Rs. {{ rp.customer_price|floatformat:2 }}</td>
+                            <td>Included</td>
                             <td>{{ rp.quantity }}</td>
-                            <td style="text-align: right; font-weight: 500;">Rs. {% widthratio rp.customer_price 1 rp.quantity as total_part %}{{ total_part|floatformat:2 }}</td>
+                            <td style="text-align: right; font-weight: 500; color: #059669;">Included</td>
                         </tr>
                         {% endfor %}
                         
-                        <!-- Labor Charge -->
+                        <!-- Repair Service Package -->
                         <tr>
                             <td>
-                                <div style="font-weight: 500;">Labor & Technical Charges</div>
-                                <div style="font-size: 0.75rem; color: var(--text-muted);">Service fee</div>
+                                <div style="font-weight: 500;">Complete Repair &amp; Diagnostic Package</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">All-inclusive repair and diagnostic service</div>
                             </td>
-                            <td>Rs. {{ labor|floatformat:2 }}</td>
+                            <td>Rs. {{ invoice.subtotal|floatformat:2 }}</td>
                             <td>1</td>
-                            <td style="text-align: right; font-weight: 500;">Rs. {{ labor|floatformat:2 }}</td>
+                            <td style="text-align: right; font-weight: 500;">Rs. {{ invoice.subtotal|floatformat:2 }}</td>
                         </tr>
                         
                         <!-- Totals -->

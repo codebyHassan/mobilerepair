@@ -78,7 +78,15 @@ def session_ping_api(request):
 
 @login_required
 def dashboard(request):
-    if hasattr(request.user, 'technician_profile') and request.user.technician_profile and not request.user.is_superuser:
+    from repairs.permissions import RolePermission
+    from repairs.models import Technician
+    perm = RolePermission(request.user)
+    if perm.is_technician and not perm.is_admin:
+        if not hasattr(request.user, 'technician_profile') or not request.user.technician_profile:
+            Technician.objects.get_or_create(
+                user=request.user,
+                defaults={'name': request.user.get_full_name() or request.user.username, 'phone': ''}
+            )
         return redirect('technician_ess_dashboard')
 
     settings = ShopSetting.get_settings()
@@ -98,8 +106,8 @@ def dashboard(request):
     today_payments = Payment.objects.filter(created_at__date=today).aggregate(Sum('amount'))['amount__sum'] or 0
     today_expenses = Expense.objects.filter(date=today).aggregate(Sum('amount'))['amount__sum'] or 0
     
-    # Outstanding payments
-    total_outstanding = Invoice.objects.aggregate(Sum('due_amount'))['due_amount__sum'] or 0
+    # Outstanding payments (unpaid customer balances only)
+    total_outstanding = Invoice.objects.filter(due_amount__gt=0).aggregate(Sum('due_amount'))['due_amount__sum'] or 0
     
     # Low stock items
     low_stock_items = list(Part.objects.filter(current_stock__lte=F('minimum_stock'))[:5])

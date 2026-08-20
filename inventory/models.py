@@ -21,9 +21,7 @@ class Supplier(models.Model):
         for part in self.parts.filter(is_credit_purchase=True):
             qty_used = part.repair_uses.aggregate(s=Sum('quantity'))['s'] or 0
             total_qty = part.current_stock + qty_used
-            if total_qty == 0:
-                total_qty = 1
-            total += float(part.purchase_cost) * total_qty
+            total += float(part.purchase_cost) * max(0, total_qty)
         return total
 
     @property

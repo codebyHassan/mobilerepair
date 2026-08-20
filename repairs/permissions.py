@@ -72,7 +72,15 @@ class RolePermission:
 # Dynamically attach RBAC properties to User model
 @property
 def user_is_technician(self):
-    return hasattr(self, 'technician_profile') and self.technician_profile is not None
+    if not self.is_authenticated:
+        return False
+    if hasattr(self, 'technician_profile') and self.technician_profile is not None:
+        return True
+    if self.groups.filter(name__iregex=r'^(technician|tech)$').exists():
+        return True
+    if getattr(self, 'role', '').upper() in ['TECHNICIAN', 'TECH']:
+        return True
+    return False
 
 @property
 def user_is_shop_admin(self):

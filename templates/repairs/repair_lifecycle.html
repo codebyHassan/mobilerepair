@@ -1142,16 +1142,28 @@
 
                             <!-- 1. TOP KPI FINANCIAL METRICS CARDS -->
                             <div class="row g-2 mb-3">
-                                <div class="col-6 col-md-6">
+                                <div class="col-6 col-md-3">
+                                    <div class="p-2 rounded-3 border bg-light text-center">
+                                        <span class="text-muted d-block small" style="font-size: 0.72rem;">Customer Quote (Diagnostic)</span>
+                                        <strong class="fs-6 text-primary">Rs. {{ estimate.estimated_cost|default:0|floatformat:2 }}</strong>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
                                     <div class="p-2 rounded-3 border bg-light text-center">
                                         <span class="text-muted d-block small" style="font-size: 0.72rem;">Parts Attached</span>
                                         <strong class="fs-6 text-dark">{{ parts_used.count }} Item{{ parts_used.count|pluralize }}</strong>
                                     </div>
                                 </div>
-                                <div class="col-6 col-md-6">
+                                <div class="col-6 col-md-3">
                                     <div class="p-2 rounded-3 border bg-light text-center">
-                                        <span class="text-muted d-block small" style="font-size: 0.72rem;">Total Shop Cost (Spare Parts)</span>
-                                        <strong class="fs-6 text-secondary">Rs. {{ parts_cost_total|floatformat:2 }}</strong>
+                                        <span class="text-muted d-block small" style="font-size: 0.72rem;">Internal Parts Expense</span>
+                                        <strong class="fs-6 text-danger">- Rs. {{ parts_cost_total|floatformat:2 }}</strong>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="p-2 rounded-3 border bg-light text-center">
+                                        <span class="text-muted d-block small" style="font-size: 0.72rem;">Internal Labor Margin</span>
+                                        <strong class="fs-6 text-success">Rs. {{ total_net_profit|floatformat:2 }}</strong>
                                     </div>
                                 </div>
                             </div>
@@ -1178,8 +1190,8 @@
                                             <select name="part_id" id="select_inventory_part" class="form-select" onchange="handleStockPartSelect(this)">
                                                 <option value="">-- Choose Part from Inventory --</option>
                                                 {% for p in inventory_parts %}
-                                                <option value="{{ p.id }}" data-price="{{ p.selling_price }}" data-cost="{{ p.purchase_cost }}" data-stock="{{ p.current_stock }}">
-                                                    {{ p.name }} (Stock: {{ p.current_stock }} | Cost: Rs. {{ p.purchase_cost|floatformat:0 }} | Sale: Rs. {{ p.selling_price|floatformat:0 }})
+                                                <option value="{{ p.id }}" data-price="{{ p.selling_price }}" data-cost="{{ p.purchase_cost }}" data-stock="{{ p.current_stock }}" {% if p.current_stock <= 0 %}disabled style="color: #94a3b8; background-color: #f1f5f9;"{% endif %}>
+                                                    {{ p.name }} ({% if p.current_stock > 0 %}Stock: {{ p.current_stock }}{% else %}🔴 OUT OF STOCK (0){% endif %} | Cost: Rs. {{ p.purchase_cost|floatformat:0 }} | Sale: Rs. {{ p.selling_price|floatformat:0 }})
                                                 </option>
                                                 {% endfor %}
                                             </select>
@@ -1205,13 +1217,41 @@
                                             <input type="text" name="new_part_name" id="supplier_part_name" class="form-control" placeholder="e.g. OLED Display Original, Battery...">
                                         </div>
                                         <div class="col-md-3">
-                                            <label class="form-label">Supplier *</label>
-                                            <select name="supplier_id" id="supplier_select_id" class="form-select">
+                                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                                <label class="form-label mb-0">Supplier *</label>
+                                                <button type="button" class="btn btn-link p-0 text-decoration-none small text-primary fw-semibold" onclick="toggleNewSupplierFields()" id="toggle_new_supp_btn" style="font-size: 0.72rem;">
+                                                    <i class="bi bi-plus-circle-fill"></i> + Add New
+                                                </button>
+                                            </div>
+                                            <select name="supplier_id" id="supplier_select_id" class="form-select" onchange="handleSupplierSelectChange(this)">
                                                 <option value="">-- Select Supplier --</option>
+                                                <option value="NEW_SUPPLIER" class="fw-bold text-primary">➕ + Register New Supplier...</option>
                                                 {% for supp in suppliers %}
                                                 <option value="{{ supp.id }}">{{ supp.name }} (Due: Rs. {{ supp.due_balance|floatformat:0 }})</option>
                                                 {% endfor %}
                                             </select>
+                                        </div>
+
+                                        <!-- Quick Add New Supplier Inline Panel -->
+                                        <div id="new_supplier_inline_fields" class="col-12 mt-2 p-2.5 rounded-3 border bg-white shadow-sm" style="display: none; border-color: #38bdf8 !important;">
+                                            <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom">
+                                                <strong class="text-primary small"><i class="bi bi-shop me-1"></i>Quick Add New Supplier (Khata Account)</strong>
+                                                <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none" onclick="hideNewSupplierFields()"><i class="bi bi-x-circle-fill"></i> Close</button>
+                                            </div>
+                                            <div class="row g-2">
+                                                <div class="col-md-4">
+                                                    <label class="form-label small mb-1">Supplier Name <span class="text-danger">*</span></label>
+                                                    <input type="text" name="new_supplier_name" id="new_supplier_name_input" class="form-control form-control-sm" placeholder="e.g. Al-Madina Spare Parts, Hafeez Center">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small mb-1">Phone / WhatsApp</label>
+                                                    <input type="text" name="new_supplier_phone" id="new_supplier_phone_input" class="form-control form-control-sm" placeholder="0300-1234567">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small mb-1">Market / Address</label>
+                                                    <input type="text" name="new_supplier_address" id="new_supplier_address_input" class="form-control form-control-sm" placeholder="Shop #12, 2nd Floor...">
+                                                </div>
+                                            </div>
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label">Purchase Cost (Rs.)</label>
@@ -2207,20 +2247,29 @@ function handleStockPartSelect(sel) {
     }
 }
 
-function autoSuggestSellingPrice(cost) {
-    const costVal = parseFloat(cost) || 0;
-    const sellField = document.getElementById('supplier_customer_price');
-    if (sellField && (!sellField.value || parseFloat(sellField.value) <= costVal)) {
-        sellField.value = (costVal * 1.35).toFixed(2);
-    }
-}
-
 function addSinglePartToJob() {
     const sel = document.getElementById('select_inventory_part');
     if (!sel || !sel.value) {
         alert('Please choose an in-stock part from the dropdown first.');
         return;
     }
+    const opt = sel.options[sel.selectedIndex];
+    const stock = parseInt(opt.getAttribute('data-stock') || '0', 10);
+    const qtyInput = document.getElementById('stock_part_qty');
+    const qty = parseInt(qtyInput ? qtyInput.value : '1', 10) || 1;
+
+    if (stock <= 0) {
+        alert(`❌ Cannot issue "${opt.text.split('(')[0].trim()}": Item is OUT OF STOCK (0 available).\nPlease choose an available in-stock part or use "Source from Supplier".`);
+        sel.focus();
+        return;
+    }
+
+    if (qty > stock) {
+        alert(`❌ Insufficient stock! Requested ${qty}, but only ${stock} items available in inventory.`);
+        if (qtyInput) qtyInput.focus();
+        return;
+    }
+
     const partAction = document.getElementById('part_action_input');
     const sourceType = document.getElementById('part_source_type_input');
     const formAction = document.getElementById('form-action-field');
@@ -2232,6 +2281,40 @@ function addSinglePartToJob() {
     if (form) form.submit();
 }
 
+function toggleNewSupplierFields() {
+    const pnl = document.getElementById('new_supplier_inline_fields');
+    const sel = document.getElementById('supplier_select_id');
+    if (!pnl) return;
+    if (pnl.style.display === 'none' || !pnl.style.display) {
+        pnl.style.display = 'block';
+        if (sel) sel.value = 'NEW_SUPPLIER';
+        const nameInput = document.getElementById('new_supplier_name_input');
+        if (nameInput) nameInput.focus();
+    } else {
+        hideNewSupplierFields();
+    }
+}
+
+function hideNewSupplierFields() {
+    const pnl = document.getElementById('new_supplier_inline_fields');
+    const sel = document.getElementById('supplier_select_id');
+    if (pnl) pnl.style.display = 'none';
+    if (sel && sel.value === 'NEW_SUPPLIER') sel.value = '';
+}
+
+function handleSupplierSelectChange(sel) {
+    const pnl = document.getElementById('new_supplier_inline_fields');
+    if (sel.value === 'NEW_SUPPLIER') {
+        if (pnl) {
+            pnl.style.display = 'block';
+            const nameInput = document.getElementById('new_supplier_name_input');
+            if (nameInput) nameInput.focus();
+        }
+    } else {
+        if (pnl) pnl.style.display = 'none';
+    }
+}
+
 function addSupplierPartToJob() {
     const nameField = document.getElementById('supplier_part_name');
     if (!nameField || !nameField.value.trim()) {
@@ -2239,6 +2322,24 @@ function addSupplierPartToJob() {
         if (nameField) nameField.focus();
         return;
     }
+
+    const suppSel = document.getElementById('supplier_select_id');
+    const newSuppName = document.getElementById('new_supplier_name_input');
+    const newSuppPnl = document.getElementById('new_supplier_inline_fields');
+
+    // Supplier validation
+    if (suppSel && suppSel.value === 'NEW_SUPPLIER' || (newSuppPnl && newSuppPnl.style.display !== 'none')) {
+        if (!newSuppName || !newSuppName.value.trim()) {
+            alert('Please enter the New Supplier Name.');
+            if (newSuppName) newSuppName.focus();
+            return;
+        }
+    } else if (suppSel && !suppSel.value) {
+        alert('Please select a Supplier or click "+ Add New" to register a new supplier.');
+        suppSel.focus();
+        return;
+    }
+
     const costField = document.getElementById('supplier_purchase_cost');
     const qtyField = document.getElementById('supplier_qty');
 

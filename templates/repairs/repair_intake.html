@@ -282,13 +282,19 @@
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">Assign Technician</label>
-                        <select name="assigned_technician" class="form-control">
-                            <option value="">-- Unassigned --</option>
-                            {% for tech in technicians %}
-                                <option value="{{ tech.id }}">{{ tech.name }} ({{ tech.specialization|default:"General" }})</option>
-                            {% endfor %}
-                        </select>
+                        <label class="form-label" style="font-weight: 600;">Intake Taken By (Staff / User)</label>
+                        <div class="form-control d-flex align-items-center justify-content-between" style="background-color: var(--background-color); border: 1px solid var(--border-color); padding: 10px 14px; border-radius: 8px; cursor: default;">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-user-check text-primary fs-5"></i>
+                                <div>
+                                    <strong style="color: var(--text-primary); font-size: 0.95rem;">{{ request.user.get_full_name|default:request.user.username }}</strong>
+                                    <span style="font-size: 0.78rem; color: var(--text-muted); display: block;">Logged-in User (Intake Officer)</span>
+                                </div>
+                            </div>
+                            <span class="badge" style="background-color: var(--primary-light, #e0f2fe); color: var(--primary-color, #0284c7); font-weight: 600; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem;">
+                                Current User
+                            </span>
+                        </div>
                     </div>
                     
                     <div class="form-group">

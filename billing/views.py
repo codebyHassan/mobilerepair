@@ -349,21 +349,19 @@ def invoice_pdf(request, pk):
     ]
 
     for p in parts:
-        ptotal = p.customer_price * p.quantity
         table_data.append([
             Paragraph(f"Spare Part: {p.part.name}", subtitle_style),
             Paragraph(str(p.quantity), subtitle_style),
-            Paragraph(f"{settings.currency} {p.customer_price:,.2f}", subtitle_style),
-            Paragraph(f"{settings.currency} {ptotal:,.2f}", subtitle_style),
+            Paragraph("Included", subtitle_style),
+            Paragraph("Included", subtitle_style),
         ])
 
-    if labor > 0:
-        table_data.append([
-            Paragraph("Technician Labor & Service Charge", subtitle_style),
-            Paragraph("1", subtitle_style),
-            Paragraph(f"{settings.currency} {labor:,.2f}", subtitle_style),
-            Paragraph(f"{settings.currency} {labor:,.2f}", subtitle_style),
-        ])
+    table_data.append([
+        Paragraph("Diagnostic & Complete Repair Package", subtitle_style),
+        Paragraph("1", subtitle_style),
+        Paragraph(f"{settings.currency} {invoice.subtotal:,.2f}", subtitle_style),
+        Paragraph(f"{settings.currency} {invoice.subtotal:,.2f}", subtitle_style),
+    ])
 
     items_table = Table(table_data, colWidths=[270, 45, 110, 115])
     items_table.setStyle(TableStyle([
@@ -493,22 +491,20 @@ def invoice_image(request, pk):
 
     for i, p in enumerate(parts):
         bg = '#FFFFFF' if i % 2 == 0 else '#F8FAFC'
-        ptotal = float(p.customer_price) * p.quantity
         draw.rectangle([(30, y_row), (650, y_row + 28)], fill=bg, outline='#F1F5F9', width=1)
         draw.text((42, y_row + 6), f"Spare Part: {p.part.name[:35]}", fill='#1E293B', font=font_regular_12)
         draw.text((360, y_row + 6), str(p.quantity), fill='#1E293B', font=font_regular_12)
-        draw.text((430, y_row + 6), f"{curr} {p.customer_price:,.2f}", fill='#1E293B', font=font_regular_12)
-        draw.text((540, y_row + 6), f"{curr} {ptotal:,.2f}", fill='#1E293B', font=font_bold_12)
+        draw.text((430, y_row + 6), "Included", fill='#1E293B', font=font_regular_12)
+        draw.text((540, y_row + 6), "Included", fill='#1E293B', font=font_bold_12)
         y_row += 28
 
-    if labor > 0:
-        bg = '#FFFFFF' if len(parts) % 2 == 0 else '#F8FAFC'
-        draw.rectangle([(30, y_row), (650, y_row + 28)], fill=bg, outline='#F1F5F9', width=1)
-        draw.text((42, y_row + 6), "Labor & Service Charge", fill='#1E293B', font=font_regular_12)
-        draw.text((360, y_row + 6), "1", fill='#1E293B', font=font_regular_12)
-        draw.text((430, y_row + 6), f"{curr} {labor:,.2f}", fill='#1E293B', font=font_regular_12)
-        draw.text((540, y_row + 6), f"{curr} {labor:,.2f}", fill='#1E293B', font=font_bold_12)
-        y_row += 28
+    bg = '#FFFFFF' if len(parts) % 2 == 0 else '#F8FAFC'
+    draw.rectangle([(30, y_row), (650, y_row + 28)], fill=bg, outline='#F1F5F9', width=1)
+    draw.text((42, y_row + 6), "Diagnostic & Repair Package", fill='#1E293B', font=font_regular_12)
+    draw.text((360, y_row + 6), "1", fill='#1E293B', font=font_regular_12)
+    draw.text((430, y_row + 6), f"{curr} {invoice.subtotal:,.2f}", fill='#1E293B', font=font_regular_12)
+    draw.text((540, y_row + 6), f"{curr} {invoice.subtotal:,.2f}", fill='#1E293B', font=font_bold_12)
+    y_row += 28
 
     # Totals breakdown
     y_totals = y_row + 15
